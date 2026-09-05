@@ -23,14 +23,14 @@ if not exist "backend\model.pkl" (
     echo.
 )
 
-:: Step 3: Terminate any old lingering process on port 8000
+:: Step 3: Terminate any old lingering python processes on port 8000
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
     taskkill /f /pid %%a >nul 2>&1
 )
 
 :: Step 4: Launch FastAPI Backend Server
 echo [1/2] Starting FastAPI Backend API Server on http://127.0.0.1:8000 ...
-start "GeoDivert FastAPI Backend" cmd /k "python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload"
+start "GeoDivert FastAPI Backend" cmd /k "python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000"
 
 :: Step 5: Pause briefly for backend startup
 timeout /t 3 /nobreak >nul

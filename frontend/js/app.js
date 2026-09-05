@@ -288,8 +288,13 @@
 
     state.selectedDestination = selected;
 
-    // Reveal Results Section
-    if (dom.resultsSection) dom.resultsSection.classList.remove('hidden');
+    // Reveal Results Section and scroll into view
+    if (dom.resultsSection) {
+      dom.resultsSection.classList.remove('hidden');
+      setTimeout(() => {
+        dom.resultsSection.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
 
     // Render Origin Card
     renderSelectedDestCard(selected);

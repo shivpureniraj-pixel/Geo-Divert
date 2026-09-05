@@ -3,8 +3,8 @@ title GeoDivert AI Platform - 3D MapLibre & FastAPI Server
 color 0A
 
 echo =========================================================================
-echo               🧭 GEODIVERT TOURISM AI PLATFORM
-echo    Spatial Crowd Redistribution, 3D MapLibre Heatmap & FastAPI
+echo               GEODIVERT TOURISM AI PLATFORM
+echo    Spatial Crowd Redistribution, 3D MapLibre Heatmap and FastAPI
 echo =========================================================================
 echo.
 
@@ -18,7 +18,7 @@ if %errorlevel% neq 0 (
 
 :: Step 2: Check if model.pkl exists, if not generate it
 if not exist "backend\model.pkl" (
-    echo [INFO] Training initial Crowd Density DecisionTree Model (model.pkl)...
+    echo [INFO] Training initial Crowd Density DecisionTree Model...
     python backend\train_model.py
     echo.
 )
@@ -36,7 +36,7 @@ start "" "%~dp0frontend\index.html"
 
 echo.
 echo =========================================================================
-echo 🎉 GeoDivert is up and running!
+echo GeoDivert is up and running!
 echo  - Frontend UI: Opened in your browser (%~dp0frontend\index.html)
 echo  - FastAPI Backend: Running at http://127.0.0.1:8000
 echo  - Interactive Swagger Docs: http://127.0.0.1:8000/docs

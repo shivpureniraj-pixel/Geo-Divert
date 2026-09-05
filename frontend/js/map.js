@@ -151,7 +151,7 @@
               0.2, 'rgba(16, 185, 129, 0.4)', // Low crowd - Green glow
               0.5, 'rgba(245, 158, 11, 0.7)', // Medium crowd - Amber glow
               0.8, 'rgba(244, 63, 94, 0.95)', // High crowd - Vibrant Red glow
-              1.0, 'rgba(225, 29, 72, 1.0)'   # Heavy crowd - Deep Crimson
+              1.0, 'rgba(225, 29, 72, 1.0)'   // Heavy crowd - Deep Crimson
             ],
             // Heatmap point radius in pixels
             'heatmap-radius': [

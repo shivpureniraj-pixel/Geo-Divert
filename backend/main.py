@@ -1,6 +1,6 @@
 """
 GeoDivert Backend API & Local Web Server - FastAPI Central Orchestration Engine
-Mounts frontend UI at http://127.0.0.1:8000/ for direct local web access and geolocation permission.
+Directly serves the 3D MapLibre Frontend UI at http://127.0.0.1:8000/
 """
 
 import sys
@@ -29,7 +29,7 @@ except ImportError:
 app = FastAPI(
     title="GeoDivert Tourism Crowd Redistribution Platform",
     description="FastAPI Orchestration Microservice connecting Scikit-Learn ML, Amravati Tourist Attractions, and Gemini 1.5 Flash",
-    version="1.3.0"
+    version="1.4.0"
 )
 
 # Enable CORS Middleware
@@ -40,6 +40,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
 
 class DispersalRequest(BaseModel):
     latitude: float = 20.9320
@@ -61,6 +63,14 @@ class StoryRequest(BaseModel):
     city: str = "Amravati"
     description: str
     merchant: Optional[dict] = None
+
+# 1. ROOT ROUTE: Directly serve index.html for web browser access
+@app.get("/")
+def serve_index_page():
+    index_path = os.path.join(frontend_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"status": "online", "city": "Amravati, Maharashtra"}
 
 @app.get("/api/health")
 def get_health():
@@ -107,7 +117,7 @@ def get_monitored_spots(
 def recommend_dispersal(request: DispersalRequest):
     """
     Core Dispersal Pipeline:
-    1. Evaluates origin crowd density via ML model.pkl
+    1. Evaluates user origin crowd density via ML model.pkl
     2. Fetches verified tourist spots in Amravati
     3. Runs Spatial Dispersal Formula: min F(x) = alpha*d + beta*C(i) - gamma*V(i) - delta*PrefMatch
     4. Pairs authentic local merchant within 800m-1.5km
@@ -163,8 +173,16 @@ def generate_story_endpoint(request: StoryRequest):
     )
     return {"story": story}
 
-# Mount Frontend files directly for localhost web server
-frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
+# Mount static asset folders (css, js)
+css_dir = os.path.join(frontend_dir, "css")
+if os.path.exists(css_dir):
+    app.mount("/css", StaticFiles(directory=css_dir), name="css")
+
+js_dir = os.path.join(frontend_dir, "js")
+if os.path.exists(js_dir):
+    app.mount("/js", StaticFiles(directory=js_dir), name="js")
+
+# Mount root fallback static files
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 

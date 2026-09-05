@@ -21,11 +21,11 @@ def load_crowd_model():
 
 def predict_crowd_score(latitude: float, longitude: float, hour: int, day_of_week: int) -> float:
     """
-    Predict crowd score (0-100) for a given location, hour (0-23), and day of week (0-6).
+    Predict crowd score (0-100) for a given location coordinate, hour (0-23), and day of week (0-6).
     
     Parameters:
-        latitude (float): Location latitude (e.g. 21.1458 for Nagpur)
-        longitude (float): Location longitude (e.g. 79.0882 for Nagpur)
+        latitude (float): Location latitude (e.g. 20.9320 for Amravati)
+        longitude (float): Location longitude (e.g. 77.7523 for Amravati)
         hour (int): Hour of day (0 to 23)
         day_of_week (int): Day of week (0=Monday, ..., 5=Saturday, 6=Sunday)
         
@@ -44,6 +44,6 @@ def predict_crowd_score(latitude: float, longitude: float, hour: int, day_of_wee
     return round(score, 2)
 
 if __name__ == "__main__":
-    # Example usage for testing
-    score = predict_crowd_score(latitude=21.1458, longitude=79.0882, hour=14, day_of_week=6)
-    print(f"Test Crowd Score Prediction for Nagpur (Weekend, 2 PM): {score}/100")
+    # Test for Amravati (Weekend, 2 PM)
+    score = predict_crowd_score(latitude=20.9320, longitude=77.7523, hour=14, day_of_week=6)
+    print(f"Test Crowd Score Prediction for Shri Ambadevi Temple (Amravati, Sun 2 PM): {score}/100")

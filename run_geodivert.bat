@@ -3,8 +3,8 @@ title GeoDivert AI Platform - 3D MapLibre & FastAPI Server
 color 0A
 
 echo =========================================================================
-echo               GEODIVERT TOURISM AI PLATFORM
-echo    Spatial Crowd Redistribution, 3D MapLibre Heatmap and FastAPI
+echo               GEODIVERT TOURISM AI PLATFORM (AMRAVATI)
+echo    Spatial Crowd Redistribution, 3D MapLibre Heatmap and FastAPI Server
 echo =========================================================================
 echo.
 
@@ -23,14 +23,19 @@ if not exist "backend\model.pkl" (
     echo.
 )
 
-:: Step 3: Launch FastAPI Backend Server
+:: Step 3: Terminate any old lingering process on port 8000
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
+    taskkill /f /pid %%a >nul 2>&1
+)
+
+:: Step 4: Launch FastAPI Backend Server
 echo [1/2] Starting FastAPI Backend API Server on http://127.0.0.1:8000 ...
 start "GeoDivert FastAPI Backend" cmd /k "python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload"
 
-:: Step 4: Pause briefly for backend startup
+:: Step 5: Pause briefly for backend startup
 timeout /t 3 /nobreak >nul
 
-:: Step 5: Launch 3D MapLibre Frontend UI at Local Web Server URL
+:: Step 6: Launch 3D MapLibre Frontend UI at Local Web Server URL
 echo [2/2] Launching GeoDivert 3D Interactive Map UI on http://127.0.0.1:8000 ...
 start "" "http://127.0.0.1:8000"
 

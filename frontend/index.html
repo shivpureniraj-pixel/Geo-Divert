@@ -4,28 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GeoDivert – AI-Powered Tourism Crowd Redistribution Platform</title>
-  <meta name="description" content="GeoDivert mitigates tourism congestion with real-time crowd radar, intelligent alternative routing, and personalized travel recommendations." />
+  <meta name="description" content="GeoDivert mitigates tourism congestion with real-time ML crowd prediction, 3D MapLibre heatmap, spatial dispersal routing, and Gemini AI concierge." />
 
   <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <!-- Leaflet.js CSS for Interactive OpenStreetMap -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <!-- MapLibre GL JS & MapTiler SDK CSS for 3D Map Rendering -->
+  <link href="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.0/maptiler-sdk.css" rel="stylesheet" />
+  <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
 
   <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
 
-  <!-- Ambient Lighting Effects -->
+  <!-- Ambient Background Glows -->
   <div class="ambient-glow-1" aria-hidden="true"></div>
   <div class="ambient-glow-2" aria-hidden="true"></div>
 
   <!-- Mission Banner Strip -->
   <div class="mission-banner">
-    🧭 <strong>GeoDivert AI Redistribution Platform</strong>: Dynamically redirecting tourists from overcrowded hotspots to personalized, high-rated serene alternatives.
+    🧭 <strong>GeoDivert Reverse-Crowd AI Engine</strong>: Dynamically routing tourists from overcrowded hotspots to personalized, serene hidden gems paired with local merchants.
   </div>
 
   <!-- 1. SITE HEADER -->
@@ -34,539 +35,375 @@
       <a href="#home" class="brand-logo" aria-label="GeoDivert Home">
         <div class="brand-icon">🧭</div>
         <span class="brand-name">GeoDivert</span>
-        <span class="brand-badge">AI Dispersal</span>
+        <span class="brand-badge">Reverse-Crowd AI</span>
       </a>
 
       <nav aria-label="Main Navigation">
         <ul class="nav-menu">
-          <li><a href="#home" class="nav-link active">Home</a></li>
-          <li><a href="#explore-section" class="nav-link">Explore</a></li>
+          <li><a href="#explore-section" class="nav-link active">Explore</a></li>
+          <li><a href="#map-section" class="nav-link">3D Live Map</a></li>
           <li><a href="#results-section" class="nav-link">Dispersal Engine</a></li>
           <li>
             <button type="button" class="nav-pref-btn" id="nav-pref-btn" title="Set your travel interests">
-              🎯 Preferences <span class="nav-pref-count" id="nav-pref-count">Set</span>
+              🎯 Preferences <span class="nav-pref-count" id="nav-pref-count">2 Active</span>
             </button>
           </li>
-          <li><a href="#map-section" class="nav-link">Live Map</a></li>
-          <li><a href="#hospitality-section" class="nav-link">Local Hospitality</a></li>
-          <li><a href="#impact-section" class="nav-link">Impact</a></li>
         </ul>
       </nav>
 
       <div class="nav-actions">
-        <button type="button" class="mode-toggle-btn" id="mode-toggle-btn" title="Toggle between Tourist and Govt Command Center views">
-          <span>🏛️ Switch to Gov Admin</span>
-        </button>
-
-        <div class="live-radar-badge" title="Real-Time AI Crowd Radar Active">
+        <div class="live-radar-badge" id="radar-badge" title="FastAPI ML Backend & 3D Radar Active">
           <span class="radar-dot"></span>
-          <span>Radar: Active</span>
+          <span id="radar-status-text">Radar: Online</span>
         </div>
       </div>
     </div>
   </header>
 
   <main>
-    <!-- TOURIST VIEW CONTAINER -->
-    <div id="tourist-view-container">
-      
-      <!-- 2. HERO / SEARCH SECTION -->
-      <section class="hero-section" id="explore-section">
-        <div class="container">
-          <div class="hero-pill">
-            <span class="sparkle">✨</span>
-            <span>Next-Gen Personalized Tourism Rerouting</span>
+    <!-- 2. HERO / SEARCH & LOCATION SECTION -->
+    <section class="hero-section" id="explore-section">
+      <div class="container">
+        <div class="hero-pill">
+          <span class="sparkle">✨</span>
+          <span>Next-Gen Spatial Crowd Dispersal & AI Tour Guide</span>
+        </div>
+
+        <h1 class="hero-title">
+          Explore More. <span class="gradient-text">Crowd Less.</span>
+        </h1>
+
+        <p class="hero-subtitle">
+          Don't get stuck in 60-minute ticket queues and traffic bottlenecks. GeoDivert evaluates real-time crowd density using machine learning and routes you to verified serene cultural landmarks and local family bakeries.
+        </p>
+
+        <!-- Search Bar & Location Controls -->
+        <div class="search-container">
+          <div class="search-input-wrapper">
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input
+              type="text"
+              id="search-input"
+              class="search-input"
+              placeholder="Enter your hotel, destination or interest (e.g., Sitabuldi Fort, Nature, Lakes)..."
+              aria-label="Where do you want to explore?"
+              autocomplete="off"
+            />
+            <button type="button" id="btn-geolocation" class="search-clear-btn" style="display:flex; align-items:center; justify-content:center; width:auto; padding:0 12px; gap:4px; font-size:0.8rem; font-weight:700; color:var(--primary); background:rgba(56,189,248,0.1); border-radius:8px;" title="Use my device GPS location">
+              📍 Find My Location
+            </button>
+            <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Clear search input">✕</button>
+            <button type="button" id="explore-btn" class="explore-button">
+              <span>Inspect Crowd</span>
+              <span aria-hidden="true">→</span>
+            </button>
           </div>
 
-          <h1 class="hero-title">
-            Explore More. <span class="gradient-text">Crowd Less.</span>
-          </h1>
+          <!-- Autocomplete Dropdown -->
+          <div id="autocomplete-dropdown" class="autocomplete-dropdown" role="listbox" aria-label="Search suggestions"></div>
+        </div>
 
-          <p class="hero-subtitle">
-            Don't waste your vacation stuck in 60-minute ticket lines. GeoDivert alerts you to crowd congestion and routes you to personalized, high-rated alternatives matching your interests.
-          </p>
+        <!-- Quick Hotspot Chips -->
+        <div class="quick-chips-wrapper">
+          <span class="quick-chips-label">Popular Locations:</span>
+          <button type="button" class="quick-chip" data-lat="21.1458" data-lon="79.0882" data-name="Sitabuldi Fort">
+            <span>🏰</span> Sitabuldi Fort (High Crowd)
+          </button>
+          <button type="button" class="quick-chip" data-lat="21.1497" data-lon="79.0434" data-name="Futala Lake">
+            <span>🌊</span> Futala Lake (High Crowd)
+          </button>
+          <button type="button" class="quick-chip" data-lat="21.1278" data-lon="79.0669" data-name="Deekshabhoomi">
+            <span>🙏</span> Deekshabhoomi (Serene)
+          </button>
+          <button type="button" class="quick-chip" data-lat="21.4056" data-lon="79.3333" data-name="Khindsi Lake">
+            <span>🌿</span> Khindsi Lake (Serene)
+          </button>
+          <button type="button" class="quick-chip" data-lat="21.3970" data-lon="79.3275" data-name="Ramtek Fort">
+            <span>⛰️</span> Ramtek Fort (Serene)
+          </button>
+        </div>
+      </div>
+    </section>
 
-          <!-- Search Input Bar -->
-          <div class="search-container">
-            <div class="search-input-wrapper">
-              <span class="search-icon" aria-hidden="true">🔍</span>
-              <input
-                type="text"
-                id="search-input"
-                class="search-input"
-                placeholder="Search a place, monument, fort, or interest (e.g., Sinhagad Fort, Nature)..."
-                aria-label="Where do you want to explore?"
-                autocomplete="off"
-              />
-              <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Clear search input">✕</button>
-              <button type="button" id="explore-btn" class="explore-button">
-                <span>Inspect Crowd</span>
-                <span aria-hidden="true">→</span>
+    <!-- 3. INTERACTIVE 3D MAP SECTION (MAPLIBRE GL JS & MAPTILER) -->
+    <section class="map-section" id="map-section" style="padding-top: 1rem;">
+      <div class="container">
+        <div class="map-card-wrapper">
+          <div class="map-card-header">
+            <div class="map-legend">
+              <div class="legend-item">
+                <span class="legend-dot red" style="background:#f43f5e; box-shadow:0 0 8px #f43f5e;"></span>
+                <span>High Crowd Red Zone (Overcrowded)</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot green" style="background:#10b981; box-shadow:0 0 8px #10b981;"></span>
+                <span>Calm Corridor (Recommended Hidden Gem)</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot blue" style="background:#38bdf8; box-shadow:0 0 8px #38bdf8;"></span>
+                <span>3D Dispersal Route Line</span>
+              </div>
+            </div>
+
+            <div class="map-quick-actions">
+              <button type="button" class="map-action-btn" id="btn-toggle-3d" onclick="window.GeoDivertMap.toggle3D()">
+                🏔️ Toggle 3D Pitch (70°)
+              </button>
+              <button type="button" class="map-action-btn" id="btn-toggle-heatmap" onclick="window.GeoDivertMap.toggleHeatmap()">
+                🔥 Toggle Crowd Heatmap
+              </button>
+              <button type="button" class="map-action-btn" onclick="window.GeoDivertMap.resetBounds()">
+                🎯 Recenter View
               </button>
             </div>
-
-            <!-- Autocomplete Dropdown -->
-            <div id="autocomplete-dropdown" class="autocomplete-dropdown" role="listbox" aria-label="Search suggestions"></div>
           </div>
 
-          <!-- Quick Suggestions Chips -->
-          <div class="quick-chips-wrapper">
-            <span class="quick-chips-label">Popular Hotspots:</span>
-            <button type="button" class="quick-chip" data-query="Shaniwar Wada">
-              <span>🏰</span> Shaniwar Wada (88% High)
-            </button>
-            <button type="button" class="quick-chip" data-query="Sinhagad Fort">
-              <span>⛰️</span> Sinhagad Fort (94% High)
-            </button>
-            <button type="button" class="quick-chip" data-query="Dagdusheth">
-              <span>🙏</span> Dagdusheth Temple (91% High)
-            </button>
-            <button type="button" class="quick-chip" data-query="Aga Khan Palace">
-              <span>🌿</span> Aga Khan Palace (32% Low)
-            </button>
+          <!-- 3D Map Canvas -->
+          <div id="map-container" class="map-view-3d" style="width:100%; height:520px; background:#0b1120; position:relative; overflow:hidden;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. SMART DIVERSION COMMAND & RESULTS SECTION -->
+    <section id="results-section" class="results-section" aria-label="Dynamic Dispersal Analysis Results" style="margin-top: 2rem;">
+      <div class="container">
+
+        <!-- Toolbar -->
+        <div class="results-header-toolbar">
+          <div class="results-title-group">
+            <h2>🎯 Spatial Dispersal Optimization Engine</h2>
+            <p>Evaluating multi-objective routing formula: min F(x) = α·Distance + β·Crowd - γ·Value - δ·Preferences</p>
+          </div>
+
+          <div class="time-slot-selector" title="Simulate crowd shift across hours of the day">
+            <span style="font-size: 0.8rem; color: #94a3b8; padding-left: 8px;">Time Slot:</span>
+            <button type="button" class="time-slot-btn" data-time="morning">🌅 Morning (9 AM)</button>
+            <button type="button" class="time-slot-btn active" data-time="afternoon">☀️ Midday (2 PM)</button>
+            <button type="button" class="time-slot-btn" data-time="evening">🌙 Evening (6 PM)</button>
           </div>
         </div>
-      </section>
 
-      <!-- 3. LANDING SHOWCASE VALUE PILLARS -->
-      <section class="landing-showcase-section" id="landing-showcase">
-        <div class="container">
-          <!-- 3 Core Value Props -->
-          <div class="value-pillars-grid">
-            <div class="value-pillar-card">
-              <div class="pillar-icon">🛡️</div>
-              <h3 class="pillar-title">Bypass Overcrowding</h3>
-              <p class="pillar-desc">
-                Live visitor density sensors detect peak bottleneck hours before you leave, saving you hours in ticket queues and traffic jams.
-              </p>
+        <!-- Dispersal Comparison Grid -->
+        <div class="dispersal-split-grid">
+
+          <!-- Selected Overcrowded Destination Card -->
+          <div class="dest-card" id="selected-dest-card">
+            <div class="dest-card-banner">
+              <img id="dest-image" src="https://images.unsplash.com/photo-1599839575945-a9e5af0c3fa5?auto=format&fit=crop&w=800&q=80" alt="Selected Destination" />
+              <span class="dest-card-tag">Selected Origin Point</span>
+              <div class="crowd-status-pill" id="dest-crowd-status" style="background:#f43f5e;">HIGH CROWD</div>
             </div>
 
-            <div class="value-pillar-card">
-              <div class="pillar-icon">🎯</div>
-              <h3 class="pillar-title">Personalized Rerouting</h3>
-              <p class="pillar-desc">
-                AI matches your travel interests (Nature, History, Food, Wildlife) to suggest tailored, un-crowded destinations you'll love.
-              </p>
-            </div>
-
-            <div class="value-pillar-card">
-              <div class="pillar-icon">🤝</div>
-              <h3 class="pillar-title">Empower Local Business</h3>
-              <p class="pillar-desc">
-                Evenly redistributing tourism footfall boosts local family cafes, artisan markets, eco-resorts, and rural heritage communities.
-              </p>
-            </div>
-          </div>
-
-          <!-- Featured Hotspots Section -->
-          <div class="section-headline-row">
-            <div>
-              <h2 class="section-headline">Live Monitored Destinations</h2>
-              <p class="section-subtext">Click any attraction below to launch real-time personalized dispersal rerouting</p>
-            </div>
-          </div>
-
-          <div class="featured-grid">
-            <!-- Dynamically populated by app.js -->
-          </div>
-        </div>
-      </section>
-
-      <!-- 4. TOURIST DASHBOARD & RESULTS SECTION -->
-      <section id="results-section" class="results-section hidden" aria-label="Dynamic Dispersal Analysis Results">
-        <div class="container">
-
-          <!-- Toolbar -->
-          <div class="results-header-toolbar">
-            <div class="results-title-group">
-              <h2>🎯 Smart Diversion Command</h2>
-              <p>Real-time congestion analysis & AI personalized recommendation</p>
-            </div>
-
-            <div class="time-slot-selector" title="Simulate crowd shift across hours of the day">
-              <span style="font-size: 0.8rem; color: #94a3b8; padding-left: 8px;">Time Slot:</span>
-              <button type="button" class="time-slot-btn" data-time="morning">🌅 Morning (9 AM)</button>
-              <button type="button" class="time-slot-btn active" data-time="afternoon">☀️ Afternoon (2 PM)</button>
-              <button type="button" class="time-slot-btn" data-time="evening">🌙 Evening (6 PM)</button>
-            </div>
-          </div>
-
-          <!-- Preferences Empty/Active Banner Prompt -->
-          <div id="pref-empty-banner-container"></div>
-
-          <!-- Dispersal Comparison Grid -->
-          <div class="dispersal-split-grid">
-
-            <!-- Selected Destination Card -->
-            <div class="dest-card" id="selected-dest-card">
-              <div class="dest-card-banner">
-                <img id="dest-image" src="" alt="Selected Destination" />
-                <span class="dest-card-tag">Selected Destination</span>
-                <div class="crowd-status-pill" id="dest-crowd-status">HIGH CROWD</div>
+            <div class="dest-card-body">
+              <div class="dest-card-header">
+                <h3 id="dest-name">Sitabuldi Fort</h3>
+                <span class="dest-category-text" id="dest-category">Historical Military Fort</span>
+                <p style="font-size: 0.8rem; color: #94a3b8;" id="dest-location">Nagpur, India</p>
               </div>
 
-              <div class="dest-card-body">
-                <div class="dest-card-header">
-                  <h3 id="dest-name">Shaniwar Wada</h3>
-                  <span class="dest-category-text" id="dest-category">Historical Fortification</span>
-                  <p style="font-size: 0.8rem; color: #94a3b8;" id="dest-location">Pune, Maharashtra</p>
+              <!-- Crowd Level Meter -->
+              <div class="crowd-meter-module">
+                <div class="crowd-meter-info">
+                  <span class="crowd-meter-label">Predicted Crowd Density (DecisionTree ML)</span>
+                  <span class="crowd-meter-val" id="dest-crowd-percent">91%</span>
                 </div>
-
-                <!-- Crowd Level Meter -->
-                <div class="crowd-meter-module">
-                  <div class="crowd-meter-info">
-                    <span class="crowd-meter-label">Current Visitor Density</span>
-                    <span class="crowd-meter-val" id="dest-crowd-percent">88%</span>
-                  </div>
-                  <div class="meter-track">
-                    <div class="meter-fill bg-high" id="dest-crowd-meter-fill" style="width: 88%;"></div>
-                  </div>
-                </div>
-
-                <!-- Alert Message -->
-                <div class="dest-alert-banner">
-                  <span class="alert-icon">⚠️</span>
-                  <div>
-                    <strong>Too Crowded! Rerouting Recommended.</strong>
-                    <p id="dest-alert-message">
-                      High visitor congestion detected. Long security queues, parking scarcity, and reduced experience quality expected.
-                    </p>
-                  </div>
-                </div>
-
-                <!-- Meta -->
-                <div class="dest-quick-meta">
-                  <span id="dest-rating">⭐ 4.2 (38k reviews)</span>
-                  <span id="dest-wait-time">⏱️ ~55 min wait</span>
-                  <span id="dest-peak-hours">⏰ Peak: 11 AM - 5 PM</span>
+                <div class="meter-track">
+                  <div class="meter-fill bg-high" id="dest-crowd-meter-fill" style="width: 91%;"></div>
                 </div>
               </div>
-            </div>
 
-            <!-- SMART DIVERSION RECOMMENDATION CARD -->
-            <div class="recommendation-card" id="recommendation-card">
-              <div class="rec-badge-top">
-                <span>✨ Recommended for You</span>
-                <span class="pref-match-badge" id="rec-pref-match-badge">🎯 92% Match</span>
-              </div>
-
-              <div class="rec-banner">
-                <img id="rec-image" src="" alt="Recommended Destination" />
-              </div>
-
-              <div class="rec-body">
-                <div class="rec-header">
-                  <h3 id="rec-name">Aga Khan Palace</h3>
-                  <p style="font-size: 0.85rem; color: #34d399; font-weight: 600;" id="rec-category">Heritage Memorial & Gardens</p>
-                </div>
-
-                <!-- 4-Stat Strip -->
-                <div class="rec-metrics-strip">
-                  <div class="rec-metric-item">
-                    <span class="metric-label">Crowd</span>
-                    <span class="metric-val" id="rec-crowd-percent">32%</span>
-                  </div>
-                  <div class="rec-metric-item">
-                    <span class="metric-label">Status</span>
-                    <span class="metric-val" id="rec-crowd-status" style="color: #34d399;">LOW</span>
-                  </div>
-                  <div class="rec-metric-item">
-                    <span class="metric-label">Rating</span>
-                    <span class="metric-val" id="rec-rating">⭐ 4.5</span>
-                  </div>
-                  <div class="rec-metric-item">
-                    <span class="metric-label">Distance</span>
-                    <span class="metric-val" id="rec-distance">6.2 km</span>
-                  </div>
-                </div>
-
-                <!-- Reduction Highlight Banner -->
-                <div class="rec-reduction-highlight" id="rec-reduction-badge">
-                  🎉 67% less crowded than your selected destination
-                </div>
-
-                <!-- Why We Recommend This -->
-                <div class="rec-reasons-box">
-                  <h4>Why GeoDivert Recommends This:</h4>
-                  <ul class="rec-reasons-list" id="rec-reasons-list">
-                    <!-- Populated dynamically -->
-                  </ul>
-                </div>
-
-                <!-- Gemini 1.5 Flash Interactive Tour Guide Narrative Box -->
-                <div class="ai-tour-guide-box" id="ai-tour-guide-box" style="margin-top: 1rem; margin-bottom: 1rem; padding: 1.1rem; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: var(--radius-md);">
-                  <div style="display:flex; align-items:center; gap:8px; margin-bottom:0.5rem;">
-                    <span style="font-size:1.2rem;">🎙️</span>
-                    <strong style="color:var(--primary); font-size:0.95rem;">Gemini 1.5 Flash Tour Guide & Local Merchant Recommendation:</strong>
-                  </div>
-                  <p id="gemini-story-text" style="font-size:0.9rem; line-height:1.6; color:#f8fafc;">
-                    Loading AI narrative...
+              <!-- Alert Message -->
+              <div class="dest-alert-banner">
+                <span class="alert-icon">⚠️</span>
+                <div>
+                  <strong>High Congestion Detected!</strong>
+                  <p id="dest-alert-message">
+                    Peak visitor density and bottleneck traffic. GeoDivert recommends spatial dispersal to a nearby serene cultural corridor.
                   </p>
                 </div>
-
-                <!-- Button -->
-                <button type="button" class="btn-explore-alternative" id="btn-explore-alternative">
-                  <span>Explore This Alternative</span>
-                  <span>🗺️</span>
-                </button>
-              </div>
-            </div>
-
-          </div>
-
-          <!-- TOP 3 ALTERNATIVES DECK -->
-          <div class="alt-deck-title">
-            <span>🔀 Top 3 AI Ranked Alternatives</span>
-            <span style="font-size:0.85rem; color:var(--text-muted); font-weight:normal;">(Ranked by Preference Match, crowd level, distance & rating)</span>
-          </div>
-
-          <div class="alt-deck-grid" id="alt-deck-grid">
-            <!-- Populated dynamically -->
-          </div>
-
-          <!-- CROWD COMPARISON SECTION -->
-          <div class="comparison-section-box">
-            <div class="comp-header">
-              <h3>⚖️ Live Crowd Redistribution Impact</h3>
-              <p>Comparison between overcrowded hotspot and recommended peaceful alternative</p>
-            </div>
-
-            <div class="comparison-duel-grid">
-              <!-- Selected -->
-              <div class="duel-side red">
-                <div class="duel-title-row">
-                  <span class="duel-place-name" id="comp-orig-name">Shaniwar Wada</span>
-                  <span class="duel-crowd-val" id="comp-orig-percent">88% 🔴 HIGH</span>
-                </div>
-                <div class="meter-track">
-                  <div class="meter-fill bg-high" id="comp-orig-bar" style="width: 88%;"></div>
-                </div>
               </div>
 
-              <!-- VS Badge -->
-              <div class="duel-vs-badge">VS</div>
-
-              <!-- Alternative -->
-              <div class="duel-side green">
-                <div class="duel-title-row">
-                  <span class="duel-place-name" id="comp-alt-name">Aga Khan Palace</span>
-                  <span class="duel-crowd-val" id="comp-alt-percent">32% 🟢 LOW</span>
-                </div>
-                <div class="meter-track">
-                  <div class="meter-fill bg-low" id="comp-alt-bar" style="width: 32%;"></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="comp-impact-quote" id="comp-diff-badge">
-              📉 <strong>56% Crowd Reduction</strong> achieved by accepting the GeoDivert smart alternative!
-            </div>
-          </div>
-
-          <!-- INTERACTIVE LEAFLET MAP SECTION -->
-          <div class="map-section" id="map-section">
-            <div class="map-card-wrapper">
-              <div class="map-card-header">
-                <div class="map-legend">
-                  <div class="legend-item">
-                    <span class="legend-dot red"></span>
-                    <span>High Crowd (Overcrowded)</span>
-                  </div>
-                  <div class="legend-item">
-                    <span class="legend-dot green"></span>
-                    <span>Low Crowd (Serene Alternative)</span>
-                  </div>
-                  <div class="legend-item">
-                    <span class="legend-dot orange"></span>
-                    <span>Medium Crowd</span>
-                  </div>
-                </div>
-
-                <div class="map-quick-actions">
-                  <button type="button" class="map-action-btn" onclick="window.GeoDivertMap.resetBounds()">
-                    🎯 Fit Both Locations
-                  </button>
-                </div>
-              </div>
-
-              <!-- Leaflet Map Container -->
-              <div id="leaflet-map" role="region" aria-label="Interactive Leaflet Map"></div>
-            </div>
-          </div>
-
-          <!-- ROUTE SECTION -->
-          <div class="route-section-box" id="route-section">
-            <div class="route-header-row">
-              <div>
-                <h3>🛣️ Dispersal Navigation Route</h3>
-                <p style="font-size: 0.85rem; color: #94a3b8;">Direct route connecting overcrowded destination to recommended serene spot</p>
-              </div>
-
-              <div class="transport-mode-tabs" role="tablist">
-                <button type="button" class="mode-tab-btn active" data-mode="drive">🚗 Drive</button>
-                <button type="button" class="mode-tab-btn" data-mode="transit">🚌 Transit</button>
-                <button type="button" class="mode-tab-btn" data-mode="walk">🚶 Walk</button>
-              </div>
-            </div>
-
-            <div class="route-steps-grid">
-              <div class="route-step-card">
-                <span class="step-label">Overcrowded Point</span>
-                <span class="step-val" id="route-start">Shaniwar Wada</span>
-              </div>
-              <div class="route-step-card">
-                <span class="step-label">Serene Destination</span>
-                <span class="step-val" id="route-end" style="color: #34d399;">Aga Khan Palace</span>
-              </div>
-              <div class="route-step-card">
-                <span class="step-label">Distance</span>
-                <span class="step-val" id="route-distance">6.2 km</span>
-              </div>
-              <div class="route-step-card">
-                <span class="step-label">Travel Duration</span>
-                <span class="step-val" id="route-duration" style="color: #fbbf24;">🚗 18 mins</span>
+              <!-- Meta -->
+              <div class="dest-quick-meta">
+                <span id="dest-rating">⭐ 4.3 (19k reviews)</span>
+                <span id="dest-wait-time">⏱️ ~45 min wait</span>
+                <span id="dest-peak-hours">⏰ Peak: 11 AM - 5 PM</span>
               </div>
             </div>
           </div>
 
-          <!-- LOCAL HOSPITALITY SECTION -->
-          <section class="hospitality-section" id="hospitality-section">
-            <div class="section-headline-row" style="text-align: center; display: block; margin-bottom: 2rem;">
-              <h2 class="section-headline">Complete Your Visit</h2>
-              <p class="section-subtext">Discover local cafes, boutique stays, and artisan markets around your recommended alternative</p>
+          <!-- SMART DIVERSION RECOMMENDED CARD -->
+          <div class="recommendation-card" id="recommendation-card">
+            <div class="rec-badge-top">
+              <span>✨ Recommended Hidden Gem</span>
+              <span class="pref-match-badge" id="rec-pref-match-badge">🎯 95% Preference Match</span>
             </div>
 
-            <div class="hosp-filter-row" role="tablist">
-              <button type="button" class="hosp-filter-tab active" data-filter="all">🌟 All Partners</button>
-              <button type="button" class="hosp-filter-tab" data-filter="restaurant">🍽️ Restaurants & Cafés</button>
-              <button type="button" class="hosp-filter-tab" data-filter="hotel">🏨 Hotels & Stays</button>
-              <button type="button" class="hosp-filter-tab" data-filter="experience">🎭 Cultural Experiences</button>
+            <div class="rec-banner">
+              <img id="rec-image" src="https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80" alt="Recommended Destination" />
             </div>
 
-            <div class="hospitality-cards-grid" id="hospitality-cards-grid">
-              <!-- Dynamically populated by app.js -->
-            </div>
-          </section>
+            <div class="rec-body">
+              <div class="rec-header">
+                <h3 id="rec-name">Deekshabhoomi Stupa</h3>
+                <p style="font-size: 0.85rem; color: #34d399; font-weight: 600;" id="rec-category">Sacred Peace Monument & Gardens</p>
+              </div>
 
-          <!-- TOURISM IMPACT SECTION -->
-          <section class="impact-section" id="impact-section">
-            <div class="impact-card-box">
-              <div class="impact-header-row">
-                <span style="font-size: 2rem;">🌱</span>
-                <div>
-                  <h3>Sustainable Tourism Impact</h3>
-                  <span style="font-size: 0.85rem; color: #34d399; font-weight: 600;">GeoDivert Crowd Redistribution Intelligence</span>
+              <!-- 4-Stat Strip -->
+              <div class="rec-metrics-strip">
+                <div class="rec-metric-item">
+                  <span class="metric-label">Crowd</span>
+                  <span class="metric-val" id="rec-crowd-percent" style="color:#34d399;">28%</span>
+                </div>
+                <div class="rec-metric-item">
+                  <span class="metric-label">Status</span>
+                  <span class="metric-val" id="rec-crowd-status" style="color: #34d399;">SERENE</span>
+                </div>
+                <div class="rec-metric-item">
+                  <span class="metric-label">Distance</span>
+                  <span class="metric-val" id="rec-distance">3.4 km</span>
+                </div>
+                <div class="rec-metric-item">
+                  <span class="metric-label">Rating</span>
+                  <span class="metric-val" id="rec-rating">⭐ 4.8</span>
                 </div>
               </div>
 
-              <p class="impact-desc-text">
-                By redistributing visitor footfall away from congested hotspots, <strong>GeoDivert</strong> prevents heritage site wear and tear, eliminates ticket queue delays, and drives revenue to small local businesses.
-              </p>
-
-              <div class="impact-metrics-grid">
-                <div class="impact-metric-stat">
-                  <span class="stat-number">38%</span>
-                  <span class="stat-title">Heritage Strain Reduction</span>
-                  <span class="stat-desc">Prevents structural wear & trampling at historical monuments</span>
-                </div>
-
-                <div class="impact-metric-stat">
-                  <span class="stat-number">46m</span>
-                  <span class="stat-title">Avg Wait Time Saved</span>
-                  <span class="stat-desc">Zero security queue friction for diverted travelers</span>
-                </div>
-
-                <div class="impact-metric-stat">
-                  <span class="stat-number">+64%</span>
-                  <span class="stat-title">Local Business Revenue</span>
-                  <span class="stat-desc">Footfall diverted to local eateries & artisan markets</span>
-                </div>
-
-                <div class="impact-metric-stat">
-                  <span class="stat-number">68.4%</span>
-                  <span class="stat-title">Dispersal Acceptance Rate</span>
-                  <span class="stat-desc">Travelers satisfied with serene alternative suggestions</span>
-                </div>
+              <!-- Reduction Highlight Banner -->
+              <div class="rec-reduction-highlight" id="rec-reduction-badge">
+                🎉 <strong>63% less crowded</strong> than your selected origin point!
               </div>
+
+              <!-- Why We Recommend This -->
+              <div class="rec-reasons-box">
+                <h4>Why GeoDivert Recommends This:</h4>
+                <ul class="rec-reasons-list" id="rec-reasons-list">
+                  <li>🟢 <strong>Zero Wait Time:</strong> Peaceful manicured grounds with optimal visitor capacity.</li>
+                  <li>🏛️ <strong>Verified Cultural Landmark:</strong> High cultural significance index (V=0.95).</li>
+                  <li>🎯 <strong>Personalized Match:</strong> Aligned with your active travel interests.</li>
+                </ul>
+              </div>
+
+              <!-- Gemini 1.5 Flash Tour Guide Narrative Box -->
+              <div class="ai-tour-guide-box" id="ai-tour-guide-box" style="margin-top: 1.25rem; margin-bottom: 1.25rem; padding: 1.25rem; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: var(--radius-md);">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:0.6rem;">
+                  <span style="font-size:1.3rem;">🎙️</span>
+                  <strong style="color:var(--primary); font-size:1rem;">Gemini 1.5 Flash AI Tour Guide:</strong>
+                </div>
+                <p id="gemini-story-text" style="font-size:0.92rem; line-height:1.65; color:#f8fafc;">
+                  Loading personalized narrative from Gemini 1.5 Flash...
+                </p>
+              </div>
+
+              <!-- Paired Local Merchant Card -->
+              <div class="paired-merchant-box" id="paired-merchant-box" style="padding: 1rem; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                  <span style="font-size:0.8rem; font-weight:700; color:#fbbf24;">🏪 PAIRED LOCAL MERCHANT (800m Radius)</span>
+                  <span id="merchant-rating" style="font-size:0.8rem; font-weight:700; color:#fbbf24;">⭐ 4.7</span>
+                </div>
+                <h4 id="merchant-name" style="font-size:1.05rem; margin-bottom:0.3rem;">Gondwana Heritage Artisan Bakery & Cafe</h4>
+                <p id="merchant-desc" style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.4rem;">
+                  30-year-old family-owned artisan bakery serving freshly baked cardamom cookies and organic herbal tea.
+                </p>
+                <span id="merchant-dist" style="font-size:0.75rem; color:#34d399; font-weight:600;">📍 300 m from destination (Supporting Local Economy)</span>
+              </div>
+
+              <!-- Button -->
+              <button type="button" class="btn-explore-alternative" id="btn-explore-alternative">
+                <span>View 3D Navigation Route</span>
+                <span>🗺️</span>
+              </button>
             </div>
-          </section>
+          </div>
 
         </div>
-      </section>
 
-    </div>
+        <!-- TOP 3 ALTERNATIVES DECK -->
+        <div class="alt-deck-title" style="margin-top: 2rem;">
+          <span>🔀 Top 3 AI Ranked Alternatives</span>
+          <span style="font-size:0.85rem; color:var(--text-muted); font-weight:normal;">(Ranked by Spatial Dispersal Formula)</span>
+        </div>
 
-    <!-- GOVERNMENT / ADMIN DASHBOARD CONTAINER -->
-    <div id="admin-dashboard-container" class="admin-dashboard-section hidden">
-      <div class="container">
-        
-        <!-- Admin Header -->
-        <div class="admin-header">
-          <div class="admin-header-title">
-            <h2>🏛️ Government & Tourism Command Center</h2>
-            <p>Real-time regional crowd radar, overcrowding intervention, and dispersal analytics</p>
+        <div class="alt-deck-grid" id="alt-deck-grid">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- CROWD COMPARISON SECTION -->
+        <div class="comparison-section-box" style="margin-top: 2rem;">
+          <div class="comp-header">
+            <h3>⚖️ Live Crowd Redistribution Impact</h3>
+            <p>Visualizing spatial dispersal balance between overcrowded hotspot and serene alternative</p>
           </div>
 
-          <div class="admin-status-badge">
-            <span class="radar-dot" style="background:#fb7185;"></span>
-            <span>5 Critical Overcrowding Alerts</span>
+          <div class="comparison-duel-grid">
+            <!-- Origin Spot -->
+            <div class="duel-side red">
+              <div class="duel-title-row">
+                <span class="duel-place-name" id="comp-orig-name">Sitabuldi Fort</span>
+                <span class="duel-crowd-val" id="comp-orig-percent">91% 🔴 HIGH</span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill bg-high" id="comp-orig-bar" style="width: 91%;"></div>
+              </div>
+            </div>
+
+            <!-- VS Badge -->
+            <div class="duel-vs-badge">VS</div>
+
+            <!-- Alternative Spot -->
+            <div class="duel-side green">
+              <div class="duel-title-row">
+                <span class="duel-place-name" id="comp-alt-name">Deekshabhoomi Stupa</span>
+                <span class="duel-crowd-val" id="comp-alt-percent">28% 🟢 SERENE</span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill bg-low" id="comp-alt-bar" style="width: 28%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="comp-impact-quote" id="comp-diff-badge">
+            📉 <strong>63% Crowd Reduction</strong> achieved by GeoDivert dynamic reverse-crowd dispersal!
           </div>
         </div>
 
-        <!-- KPI Grid -->
-        <div class="admin-kpi-grid">
-          <div class="kpi-card total">
-            <span class="kpi-label">Monitored Locations</span>
-            <div class="kpi-val">24</div>
-            <span class="kpi-trend up">🟢 100% Sensors Online</span>
+        <!-- ROUTE SECTION -->
+        <div class="route-section-box" id="route-section">
+          <div class="route-header-row">
+            <div>
+              <h3>🛣️ Dispersal Navigation Route</h3>
+              <p style="font-size: 0.85rem; color: #94a3b8;">Direct route navigating through calm green zones to the recommended hidden gem</p>
+            </div>
+
+            <div class="transport-mode-tabs" role="tablist">
+              <button type="button" class="mode-tab-btn active" data-mode="drive">🚗 Drive</button>
+              <button type="button" class="mode-tab-btn" data-mode="transit">🚌 Transit</button>
+              <button type="button" class="mode-tab-btn" data-mode="walk">🚶 Walk</button>
+            </div>
           </div>
 
-          <div class="kpi-card overcrowded">
-            <span class="kpi-label">Overcrowded Hotspots</span>
-            <div class="kpi-val" style="color:#fb7185;">5</div>
-            <span class="kpi-trend warn">⚠️ >75% Capacity Exceeded</span>
-          </div>
-
-          <div class="kpi-card serene">
-            <span class="kpi-label">Optimal / Serene Spots</span>
-            <div class="kpi-val" style="color:#34d399;">14</div>
-            <span class="kpi-trend up">🌿 Available For Diversion</span>
-          </div>
-
-          <div class="kpi-card diversions">
-            <span class="kpi-label">Tourists Redirected Today</span>
-            <div class="kpi-val" style="color:#38bdf8;">4,210</div>
-            <span class="kpi-trend up">📈 68.4% Acceptance Rate</span>
-          </div>
-        </div>
-
-        <!-- Hotspot Dispersal Control Table -->
-        <div class="admin-table-card">
-          <div class="admin-table-header">
-            <h3>📍 Real-Time Location Congestion Radar & Surge Dispatch</h3>
-            <span style="font-size:0.85rem; color:var(--text-muted);">Click "Simulate Surge / Relieve Crowd" to test live AI warnings</span>
-          </div>
-
-          <div class="admin-table-container">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Destination Name</th>
-                  <th>Crowd Level</th>
-                  <th>Visitors / Capacity</th>
-                  <th>Dispersal Status</th>
-                  <th>Intervention Actions</th>
-                </tr>
-              </thead>
-              <tbody id="admin-dest-table-body">
-                <!-- Populated dynamically by app.js -->
-              </tbody>
-            </table>
+          <div class="route-steps-grid">
+            <div class="route-step-card">
+              <span class="step-label">Origin Location</span>
+              <span class="step-val" id="route-start">Sitabuldi Fort</span>
+            </div>
+            <div class="route-step-card">
+              <span class="step-label">Recommended Destination</span>
+              <span class="step-val" id="route-end" style="color: #34d399;">Deekshabhoomi Stupa</span>
+            </div>
+            <div class="route-step-card">
+              <span class="step-label">Estimated Distance</span>
+              <span class="step-val" id="route-distance">3.4 km</span>
+            </div>
+            <div class="route-step-card">
+              <span class="step-label">Estimated Travel Time</span>
+              <span class="step-val" id="route-duration" style="color: #fbbf24;">🚗 12 mins</span>
+            </div>
           </div>
         </div>
 
       </div>
-    </div>
+    </section>
   </main>
 
   <!-- TRAVEL PREFERENCES SELECTION MODAL -->
@@ -575,8 +412,8 @@
       <button type="button" class="modal-close-btn" id="pref-modal-close-btn" aria-label="Close preferences dialog">✕</button>
       <div class="pref-modal-header">
         <div class="pref-badge">🎯 AI Personalization Engine</div>
-        <h2 id="pref-modal-title">Tell us what you love to explore</h2>
-        <p class="pref-modal-subtitle">Choose your interests and GeoDivert will personalize your destination recommendations.</p>
+        <h2 id="pref-modal-title">Select Your Travel Preferences</h2>
+        <p class="pref-modal-subtitle">GeoDivert factors your interests into the multi-objective spatial dispersal formula.</p>
       </div>
 
       <!-- Preference Category Cards -->
@@ -586,7 +423,7 @@
 
       <!-- Modal Footer -->
       <div class="pref-modal-footer">
-        <div class="pref-count-indicator" id="pref-count-indicator">0 categories selected</div>
+        <div class="pref-count-indicator" id="pref-count-indicator">2 categories selected</div>
         <div class="pref-footer-btns">
           <button type="button" class="pref-clear-btn" id="pref-clear-btn">Clear All</button>
           <button type="button" class="pref-save-btn" id="pref-save-btn">✨ Save Preferences</button>
@@ -595,40 +432,30 @@
     </div>
   </div>
 
-  <!-- Destination Details Modal -->
-  <div class="modal-backdrop" id="hospitality-modal" role="dialog" aria-modal="true" aria-labelledby="modal-hosp-title">
-    <div class="modal-sheet">
-      <button type="button" class="modal-close-btn" id="modal-close-btn" aria-label="Close dialog">✕</button>
-      <div id="modal-hosp-content">
-        <!-- Injected dynamically by app.js -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast Container -->
+  <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
   <!-- Footer -->
-  <footer class="site-footer">
+  <footer class="site-footer" style="margin-top: 4rem;">
     <div class="container footer-content">
       <div class="footer-brand">
         <span>🧭</span>
         <span>GeoDivert</span>
       </div>
       <p class="footer-tagline">
-        AI-Powered Tourism Crowd Redistribution & Local Hospitality Engine. Built for sustainable tourism management.
+        AI-Powered Tourism Crowd Redistribution, 3D MapLibre Heatmap & Local Merchant Engine.
       </p>
       <div class="footer-copyright">
-        © 2026 GeoDivert. All rights reserved. Powered by Leaflet.js & OpenStreetMap.
+        © 2026 GeoDivert. Powered by MapLibre GL JS 3D Engine, Scikit-Learn, OpenTripMap & Gemini 1.5 Flash.
       </div>
     </div>
   </footer>
 
-  <!-- Leaflet.js CDN -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- MapLibre GL JS & MapTiler SDK UMD Bundles -->
+  <script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.0/maptiler-sdk.umd.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
 
-  <!-- GeoDivert App Modules -->
-  <script src="js/data.js"></script>
+  <!-- GeoDivert Application Modules -->
   <script src="js/map.js"></script>
   <script src="js/app.js"></script>
 </body>

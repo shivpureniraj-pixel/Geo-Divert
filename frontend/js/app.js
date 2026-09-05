@@ -1,72 +1,68 @@
 /**
- * GeoDivert – Main Interactive Web Application Engine
- * Orchestrates Frontend UI, 3D MapLibre, FastAPI Dispersal Engine, OpenTripMap POIs, and Gemini 1.5 Flash
+ * GeoDivert – Main Reactive Application Engine
+ * Connects Frontend UI, 3D MapLibre, FastAPI Spatial Dispersal, OpenTripMap, and Gemini 1.5 Flash
  */
 
 (function () {
   'use strict';
 
-  const BACKEND_API_URL = 'http://127.0.0.1:8000';
+  const BACKEND_URL = 'http://127.0.0.1:8000';
 
-  // Application State
+  // Application State (Fully Dynamic)
   const state = {
-    selectedDestination: null,
-    recommendedAlternative: null,
-    topAlternatives: [],
+    currentLat: 21.1458,
+    currentLon: 79.0882,
+    currentLocationName: 'Sitabuldi Fort',
     selectedPreferences: new Set(['history', 'nature']),
-    timeSlot: 'afternoon', // 'morning' (9 AM), 'afternoon' (2 PM), 'evening' (6 PM)
+    timeSlot: 'afternoon',
     hour: 14,
-    dayOfWeek: 6, // Sunday / Weekend default
-    isGovAdminMode: false,
-    destinations: [],
-    categories: []
+    dayOfWeek: 6, // Sunday / Weekend
+    monitoredSpots: [],
+    categories: [
+      { id: 'nature', name: 'Nature & Lakes', icon: '🌿', description: 'Freshwater lakes, scenic valleys, and eco-trails' },
+      { id: 'history', name: 'History & Forts', icon: '🏰', description: 'Hilltop fortifications, ramparts, and ancient landmarks' },
+      { id: 'sacred', name: 'Sacred & Peace', icon: '🙏', description: 'Tranquil stupas, heritage temples, and quiet reflection grounds' },
+      { id: 'culture', name: 'Museums & Art', icon: '🏛️', description: 'Heritage museums, ancient fossil exhibits, and art galleries' },
+      { id: 'gardens', name: 'Gardens & Parks', icon: '🌸', description: 'Botanical collections, shaded walking paths, and bird decks' },
+      { id: 'food', name: 'Local Bakeries & Cafes', icon: '☕', description: 'Independent family bakeries, tea stalls, and handicraft markets' }
+    ]
   };
 
-  // Cached DOM references
+  // DOM Elements Cache
   let dom = {};
 
-  document.addEventListener('DOMContentLoaded', function () {
-    console.log('🚀 GeoDivert Application Initializing...');
+  document.addEventListener('DOMContentLoaded', async function () {
+    console.log('🚀 GeoDivert Reactive App Engine Starting...');
 
-    // Load initial dataset from data.js
-    if (window.GEODIVERT_DATA) {
-      state.destinations = JSON.parse(JSON.stringify(window.GEODIVERT_DATA.destinations));
-      state.categories = window.GEODIVERT_DATA.preferenceCategories;
-    }
+    cacheElements();
+    setupListeners();
+    renderPreferencesModal();
+    updatePrefBadge();
 
-    cacheDOMElements();
-    setupEventListeners();
-    renderPreferencesModalGrid();
-    renderFeaturedDestinationsGrid();
-    renderAdminTable();
-    updateNavPrefBadge();
+    // 1. Fetch live monitored spots from FastAPI backend to populate 3D Map
+    await fetchMonitoredSpots();
 
-    // Default select first high crowd destination (e.g. Futala Lake or Shaniwar Wada)
-    const initialSpot = state.destinations.find(d => d.crowdStatus === 'HIGH') || state.destinations[0];
-    if (initialSpot) {
-      selectDestination(initialSpot.id);
-    }
-
-    // Initialize 3D MapLibre Engine
+    // 2. Initialize 3D MapLibre Canvas
     if (window.GeoDivertMap) {
-      window.GeoDivertMap.initMap('map-container', state.destinations);
+      window.GeoDivertMap.initMap('map-container', state.monitoredSpots);
     }
+
+    // 3. Trigger initial dispersal recommendation for default location (Sitabuldi Fort)
+    runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
   });
 
-  /**
-   * Caches all interactive DOM elements
-   */
-  function cacheDOMElements() {
+  function cacheElements() {
     dom = {
       searchInput: document.getElementById('search-input'),
       searchClearBtn: document.getElementById('search-clear-btn'),
       exploreBtn: document.getElementById('explore-btn'),
+      geoBtn: document.getElementById('btn-geolocation'),
       autocompleteDropdown: document.getElementById('autocomplete-dropdown'),
       quickChips: document.querySelectorAll('.quick-chip'),
-      featuredGrid: document.querySelector('.featured-grid'),
-      resultsSection: document.getElementById('results-section'),
+      timeSlotBtns: document.querySelectorAll('.time-slot-btn'),
+      radarStatusText: document.getElementById('radar-status-text'),
 
-      // Selected Destination Elements
+      // Origin Spot Elements
       destImg: document.getElementById('dest-image'),
       destName: document.getElementById('dest-name'),
       destCategory: document.getElementById('dest-category'),
@@ -74,23 +70,25 @@
       destCrowdPercent: document.getElementById('dest-crowd-percent'),
       destCrowdMeterFill: document.getElementById('dest-crowd-meter-fill'),
       destCrowdStatus: document.getElementById('dest-crowd-status'),
-      destRating: document.getElementById('dest-rating'),
-      destWaitTime: document.getElementById('dest-wait-time'),
-      destPeakHours: document.getElementById('dest-peak-hours'),
 
-      // Recommended Destination Elements
+      // Recommended Alternative Elements
       recImg: document.getElementById('rec-image'),
       recName: document.getElementById('rec-name'),
       recCategory: document.getElementById('rec-category'),
       recCrowdPercent: document.getElementById('rec-crowd-percent'),
       recCrowdStatus: document.getElementById('rec-crowd-status'),
-      recRating: document.getElementById('rec-rating'),
       recDistance: document.getElementById('rec-distance'),
+      recRating: document.getElementById('rec-rating'),
       recReductionBadge: document.getElementById('rec-reduction-badge'),
-      recReasonsList: document.getElementById('rec-reasons-list'),
       recPrefMatchBadge: document.getElementById('rec-pref-match-badge'),
       geminiStoryText: document.getElementById('gemini-story-text'),
       btnExploreAlternative: document.getElementById('btn-explore-alternative'),
+
+      // Paired Merchant Elements
+      merchantName: document.getElementById('merchant-name'),
+      merchantDesc: document.getElementById('merchant-desc'),
+      merchantDist: document.getElementById('merchant-dist'),
+      merchantRating: document.getElementById('merchant-rating'),
 
       // Alternatives Deck & Comparison
       altDeckGrid: document.getElementById('alt-deck-grid'),
@@ -102,16 +100,11 @@
       compAltBar: document.getElementById('comp-alt-bar'),
       compDiffBadge: document.getElementById('comp-diff-badge'),
 
-      // Navigation Route Info
+      // Navigation Route
       routeStart: document.getElementById('route-start'),
       routeEnd: document.getElementById('route-end'),
       routeDistance: document.getElementById('route-distance'),
       routeDuration: document.getElementById('route-duration'),
-      timeSlotBtns: document.querySelectorAll('.time-slot-btn'),
-
-      // Hospitality Grid & Tabs
-      hospitalityGrid: document.getElementById('hospitality-cards-grid'),
-      hospFilterTabs: document.querySelectorAll('.hosp-filter-tab'),
 
       // Preferences Modal
       prefModal: document.getElementById('preferences-modal'),
@@ -122,28 +115,16 @@
       prefClearBtn: document.getElementById('pref-clear-btn'),
       prefSaveBtn: document.getElementById('pref-save-btn'),
       prefCountIndicator: document.getElementById('pref-count-indicator'),
-
-      // Admin Dashboard
-      modeToggleBtn: document.getElementById('mode-toggle-btn'),
-      touristViewContainer: document.getElementById('tourist-view-container'),
-      adminDashboardContainer: document.getElementById('admin-dashboard-container'),
-      adminTableBody: document.getElementById('admin-dest-table-body'),
       toastContainer: document.getElementById('toast-container')
     };
   }
 
-  /**
-   * Sets up all click and interaction listeners
-   */
-  function setupEventListeners() {
+  function setupListeners() {
     // Search input typing & enter key
     if (dom.searchInput) {
       dom.searchInput.addEventListener('input', handleSearchInput);
-      dom.searchInput.addEventListener('focus', handleSearchInput);
       dom.searchInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-          triggerSearch();
-        }
+        if (e.key === 'Enter') handleSearchSubmit();
       });
     }
 
@@ -155,52 +136,53 @@
     }
 
     if (dom.exploreBtn) {
-      dom.exploreBtn.addEventListener('click', triggerSearch);
+      dom.exploreBtn.addEventListener('click', handleSearchSubmit);
     }
 
-    // Quick hotspot chip buttons
+    // Geolocation "Find My Location" Button
+    if (dom.geoBtn) {
+      dom.geoBtn.addEventListener('click', handleGeolocation);
+    }
+
+    // Quick Destination Chips
     dom.quickChips.forEach(chip => {
       chip.addEventListener('click', function () {
-        const query = this.getAttribute('data-query');
-        if (dom.searchInput) dom.searchInput.value = query;
-        const matched = findDestinationByQuery(query);
-        if (matched) {
-          selectDestination(matched.id);
-          showToast(`⚡ Inspecting crowd congestion for ${matched.name}...`);
-        }
+        const lat = parseFloat(this.getAttribute('data-lat'));
+        const lon = parseFloat(this.getAttribute('data-lon'));
+        const name = this.getAttribute('data-name');
+        if (dom.searchInput) dom.searchInput.value = name;
+        showToast(`📍 Analyzing crowd density for ${name}...`);
+        runDispersalPipeline(lat, lon, name);
       });
     });
 
-    // Time Slot Selector buttons (Morning, Afternoon, Evening)
+    // Time Slot Selector buttons (Morning, Midday, Evening)
     dom.timeSlotBtns.forEach(btn => {
       btn.addEventListener('click', function () {
         dom.timeSlotBtns.forEach(b => b.classList.remove('active'));
         this.classList.add('active');
         state.timeSlot = this.getAttribute('data-time');
-        
+
         if (state.timeSlot === 'morning') state.hour = 9;
         else if (state.timeSlot === 'afternoon') state.hour = 14;
         else if (state.timeSlot === 'evening') state.hour = 18;
 
         showToast(`⏰ Simulated Time Slot: ${state.timeSlot.toUpperCase()} (${state.hour}:00)`);
-        recalculateDispersal();
+        runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
       });
     });
 
-    // "Explore This Alternative" button -> scroll to 3D map & route
+    // "View 3D Navigation Route" button -> smooth scroll to map
     if (dom.btnExploreAlternative) {
       dom.btnExploreAlternative.addEventListener('click', function () {
         const mapSec = document.getElementById('map-section');
         if (mapSec) mapSec.scrollIntoView({ behavior: 'smooth' });
-        showToast(`🗺️ Navigating to ${state.recommendedAlternative ? state.recommendedAlternative.name : 'Alternative'} via 3D Map`);
       });
     }
 
-    // Preferences Modal Events
+    // Preferences Modal Trigger
     if (dom.navPrefBtn) dom.navPrefBtn.addEventListener('click', () => toggleModal(dom.prefModal, true));
     if (dom.prefModalCloseBtn) dom.prefModalCloseBtn.addEventListener('click', () => toggleModal(dom.prefModal, false));
-    
-    // Close modal when clicking on backdrop
     if (dom.prefModal) {
       dom.prefModal.addEventListener('click', function (e) {
         if (e.target === dom.prefModal) toggleModal(dom.prefModal, false);
@@ -210,47 +192,21 @@
     if (dom.prefClearBtn) {
       dom.prefClearBtn.addEventListener('click', function () {
         state.selectedPreferences.clear();
-        updatePrefModalSelectionUI();
+        renderPreferencesModal();
+        if (dom.prefCountIndicator) dom.prefCountIndicator.textContent = '0 categories selected';
       });
     }
 
     if (dom.prefSaveBtn) {
       dom.prefSaveBtn.addEventListener('click', function () {
         toggleModal(dom.prefModal, false);
-        updateNavPrefBadge();
-        recalculateDispersal();
-        showToast(`✨ Preferences saved! Spatial Dispersal recalibrated.`);
+        updatePrefBadge();
+        showToast('✨ Preferences saved! Spatial Dispersal recalibrated.');
+        runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
       });
     }
 
-    // Hospitality Category Filter Tabs
-    dom.hospFilterTabs.forEach(tab => {
-      tab.addEventListener('click', function () {
-        dom.hospFilterTabs.forEach(t => t.classList.remove('active'));
-        this.classList.add('active');
-        const filter = this.getAttribute('data-filter');
-        renderHospitalityGrid(state.recommendedAlternative, filter);
-      });
-    });
-
-    // Admin Command Center / Tourist View Mode Toggle
-    if (dom.modeToggleBtn) {
-      dom.modeToggleBtn.addEventListener('click', function () {
-        state.isGovAdminMode = !state.isGovAdminMode;
-        if (state.isGovAdminMode) {
-          dom.touristViewContainer.classList.add('hidden');
-          dom.adminDashboardContainer.classList.remove('hidden');
-          this.innerHTML = `<span>🧭 Switch to Tourist View</span>`;
-          showToast(`🏛️ Command Center Active: Live Municipal Crowd Surveillance`);
-        } else {
-          dom.adminDashboardContainer.classList.add('hidden');
-          dom.touristViewContainer.classList.remove('hidden');
-          this.innerHTML = `<span>🏛️ Switch to Gov Admin</span>`;
-        }
-      });
-    }
-
-    // Close dropdown when clicking outside
+    // Close autocomplete when clicking outside
     document.addEventListener('click', function (e) {
       if (dom.searchInput && !dom.searchInput.contains(e.target) && dom.autocompleteDropdown && !dom.autocompleteDropdown.contains(e.target)) {
         dom.autocompleteDropdown.innerHTML = '';
@@ -258,77 +214,127 @@
     });
   }
 
-  function triggerSearch() {
-    const query = dom.searchInput ? dom.searchInput.value.trim() : '';
-    if (!query) return;
-    const matched = findDestinationByQuery(query);
-    if (matched) {
-      selectDestination(matched.id);
-      showToast(`📍 Analyzing crowd for "${matched.name}"...`);
-    } else {
-      showToast(`Searching live POIs for "${query}"...`);
+  /**
+   * Fetches real-time monitored spots from FastAPI backend
+   */
+  async function fetchMonitoredSpots() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/spots?lat=${state.currentLat}&lon=${state.currentLon}&hour=${state.hour}&day_of_week=${state.dayOfWeek}`);
+      if (res.ok) {
+        const data = await res.json();
+        state.monitoredSpots = data.spots || [];
+        console.log(`✅ Loaded ${state.monitoredSpots.length} monitored spots from backend.`);
+        if (dom.radarStatusText) dom.radarStatusText.textContent = `Radar: Online (${state.monitoredSpots.length} Monitored)`;
+        return;
+      }
+    } catch (e) {
+      console.log('Backend API notice:', e.message);
     }
+
+    // Fallback baseline spots for initial render
+    state.monitoredSpots = [
+      { id: 'sitabuldi', name: 'Sitabuldi Fort', category: 'Historical Military Fort', lat: 21.1458, lng: 79.0882, crowd_score: 91, crowd_status: 'HIGH', preference_category: 'history' },
+      { id: 'futala', name: 'Futala Lake Waterfront', category: 'Waterfront Promenade', lat: 21.1497, lng: 79.0434, crowd_score: 88, crowd_status: 'HIGH', preference_category: 'nature' },
+      { id: 'deekshabhoomi', name: 'Deekshabhoomi Stupa', category: 'Sacred Peace Monument', lat: 21.1278, lng: 79.0669, crowd_score: 28, crowd_status: 'LOW', preference_category: 'sacred' },
+      { id: 'khindsi', name: 'Khindsi Lake & Eco Park', category: 'Serene Eco Lake', lat: 21.4056, lng: 79.3333, crowd_score: 22, crowd_status: 'LOW', preference_category: 'nature' },
+      { id: 'ramtek', name: 'Ramtek Fort Temple', category: 'Hilltop Heritage Fort', lat: 21.3970, lng: 79.3275, crowd_score: 35, crowd_status: 'LOW', preference_category: 'history' },
+      { id: 'museum', name: 'Nagpur Central Museum', category: 'Heritage Museum', lat: 21.1528, lng: 79.0805, crowd_score: 25, crowd_status: 'LOW', preference_category: 'culture' }
+    ];
   }
 
-  function findDestinationByQuery(query) {
-    const q = query.toLowerCase();
-    return state.destinations.find(d => 
-      d.name.toLowerCase().includes(q) || 
-      d.category.toLowerCase().includes(q) || 
-      d.city.toLowerCase().includes(q)
+  /**
+   * Browser Geolocation Handler
+   */
+  function handleGeolocation() {
+    if (!navigator.geolocation) {
+      showToast('⚠️ Geolocation is not supported by your browser.');
+      return;
+    }
+
+    showToast('📡 Detecting your GPS coordinates...');
+    navigator.geolocation.getCurrentPosition(
+      function (position) {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        state.currentLat = lat;
+        state.currentLon = lon;
+        state.currentLocationName = 'My Current Location';
+        if (dom.searchInput) dom.searchInput.value = 'My Current Location (GPS)';
+        showToast(`📍 Location detected: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
+        runDispersalPipeline(lat, lon, 'My Current Location');
+      },
+      function (error) {
+        showToast('⚠️ Could not access GPS. Utilizing Nagpur Central coordinates.');
+        runDispersalPipeline(21.1458, 79.0882, 'Nagpur Center');
+      },
+      { timeout: 8000 }
     );
   }
 
-  /**
-   * Main Selection Workflow
-   */
-  function selectDestination(destId) {
-    const selected = state.destinations.find(d => d.id === destId);
-    if (!selected) return;
+  function handleSearchSubmit() {
+    const query = dom.searchInput ? dom.searchInput.value.trim() : '';
+    if (!query) return;
 
-    state.selectedDestination = selected;
+    // Check if query matches a known spot
+    const match = state.monitoredSpots.find(s => s.name.toLowerCase().includes(query.toLowerCase()));
+    if (match) {
+      runDispersalPipeline(match.lat, match.lng || match.lon, match.name);
+    } else {
+      showToast(`🔍 Searching crowd dispersal for "${query}"...`);
+      runDispersalPipeline(state.currentLat, state.currentLon, query);
+    }
+  }
 
-    // Reveal Results Section and scroll into view
-    if (dom.resultsSection) {
-      dom.resultsSection.classList.remove('hidden');
-      setTimeout(() => {
-        dom.resultsSection.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+  function handleSearchInput() {
+    const val = dom.searchInput.value.trim().toLowerCase();
+    if (!val) {
+      dom.autocompleteDropdown.innerHTML = '';
+      return;
     }
 
-    // Render Origin Card
-    renderSelectedDestCard(selected);
-
-    // Run Dispersal Algorithm (via FastAPI Backend with client fallback)
-    recalculateDispersal();
+    const matches = state.monitoredSpots.filter(s => s.name.toLowerCase().includes(val) || (s.category && s.category.toLowerCase().includes(val)));
+    dom.autocompleteDropdown.innerHTML = matches.map(m => `
+      <div onclick="window.GeoDivertApp.selectSpotById('${m.id}')" style="
+        padding: 9px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border-color);
+        color: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      ">
+        <span><strong>${m.name}</strong> <small style="color:#94a3b8;">(${m.category})</small></span>
+        <span style="font-size:0.75rem; font-weight:700; color:${(m.crowd_score || m.crowdScore) >= 75 ? '#fb7185' : '#34d399'};">
+          ${m.crowd_score || m.crowdScore || 50}% Crowd
+        </span>
+      </div>
+    `).join('');
   }
 
   /**
-   * Orchestrates the Dispersal Engine:
-   * 1. Calls FastAPI /api/recommend endpoint
-   * 2. Runs Scikit-Learn ML Model + OpenTripMap + Gemini 1.5 Flash
-   * 3. Falls back smoothly if offline
+   * Main Reactive Pipeline: Sends User Location & Preferences to FastAPI Backend
    */
-  async function recalculateDispersal() {
-    const orig = state.selectedDestination;
-    if (!orig) return;
+  async function runDispersalPipeline(lat, lon, locationName) {
+    state.currentLat = lat;
+    state.currentLon = lon;
+    state.currentLocationName = locationName || 'Origin Point';
 
-    // Show loading text in Gemini card
+    // Show loading state in Gemini story card
     if (dom.geminiStoryText) {
-      dom.geminiStoryText.innerHTML = `<em>✨ Gemini 1.5 Flash is synthesizing an interactive tour guide story & pairing local merchants...</em>`;
+      dom.geminiStoryText.innerHTML = `<em>✨ Gemini 1.5 Flash is synthesizing an interactive tour narrative and pairing local merchants...</em>`;
     }
 
     const payload = {
-      latitude: orig.lat,
-      longitude: orig.lng,
+      latitude: lat,
+      longitude: lon,
       hour: state.hour,
       day_of_week: state.dayOfWeek,
       preferences: Array.from(state.selectedPreferences),
-      selected_spot_name: orig.name
+      selected_spot_name: locationName
     };
 
     try {
-      const response = await fetch(`${BACKEND_API_URL}/api/recommend`, {
+      const response = await fetch(`${BACKEND_URL}/api/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -337,250 +343,157 @@
       if (response.ok) {
         const data = await response.json();
         console.log('✅ FastAPI Dispersal Engine Response:', data);
-
-        if (data.recommended_alternative) {
-          const rec = data.recommended_alternative;
-          state.recommendedAlternative = {
-            id: rec.id,
-            name: rec.name,
-            category: rec.category,
-            city: rec.city,
-            lat: rec.lat,
-            lng: rec.lng,
-            crowdScore: rec.crowd_score,
-            crowdStatus: rec.crowd_status,
-            rating: 4.6,
-            computedDist: rec.distance_km,
-            image: rec.image,
-            description: rec.description,
-            culturalValue: rec.cultural_value,
-            preferenceCategory: rec.preference_category,
-            pairedMerchant: data.paired_merchant
-          };
-
-          state.topAlternatives = (data.top_3_alternatives || []).map(alt => ({
-            id: alt.id,
-            name: alt.name,
-            category: alt.category,
-            city: alt.city,
-            lat: alt.lat,
-            lng: alt.lng,
-            crowdScore: alt.crowd_score,
-            crowdStatus: alt.crowd_status,
-            computedDist: alt.distance_km,
-            image: alt.image,
-            description: alt.description
-          }));
-
-          renderAllResults(orig, state.recommendedAlternative, state.topAlternatives, data.gemini_tour_guide_story, data.paired_merchant);
-          return;
-        }
+        renderDispersalResults(data, locationName);
+        return;
       }
     } catch (err) {
-      console.log('⚠️ FastAPI backend offline or connecting. Using client dispersal engine:', err.message);
+      console.log('Backend connection notice:', err.message);
     }
 
-    // Client-side Fallback Execution
-    runClientSideDispersal(orig);
+    // Client fallback execution in case backend is offline
+    renderFallbackDispersal(lat, lon, locationName);
   }
 
-  function runClientSideDispersal(orig) {
-    let candidates = state.destinations.filter(d => d.id !== orig.id);
+  /**
+   * Renders the complete dynamic dispersal results into the UI
+   */
+  function renderDispersalResults(data, locationName) {
+    const origin = data.origin || {};
+    const rec = data.recommended_alternative;
+    const top3 = data.top_3_alternatives || [];
+    const merchant = data.paired_merchant || {};
+    const geminiStory = data.gemini_tour_guide_story;
+    const reduction = data.crowd_reduction_percent || Math.max(0, (origin.crowd_score || 91) - (rec ? rec.crowd_score : 28));
 
-    candidates.forEach(cand => {
-      const dist = calculateDistance(orig.lat, orig.lng, cand.lat, cand.lng);
-      cand.computedDist = dist;
+    // 1. Origin Card
+    if (dom.destName) {
+      dom.destName.textContent = locationName || 'Selected Origin';
+      dom.destCrowdPercent.textContent = `${origin.crowd_score || 91}%`;
+      dom.destCrowdMeterFill.style.width = `${origin.crowd_score || 91}%`;
+      dom.destCrowdStatus.textContent = `${origin.crowd_status || 'HIGH'} CROWD`;
+      dom.destCrowdStatus.style.background = (origin.crowd_status === 'HIGH' || origin.crowd_score >= 75) ? '#f43f5e' : '#f59e0b';
+    }
 
-      const isPrefMatch = state.selectedPreferences.has(cand.preferenceCategory);
-      cand.prefMatchBonus = isPrefMatch ? 0.35 : 0.0;
+    // 2. Recommended Alternative Card
+    if (rec && dom.recName) {
+      dom.recName.textContent = rec.name;
+      dom.recCategory.textContent = rec.category || 'Serene Cultural Corridor';
+      dom.recImg.src = rec.image || 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80';
+      dom.recCrowdPercent.textContent = `${rec.crowd_score}%`;
+      dom.recCrowdStatus.textContent = rec.crowd_status || 'SERENE';
+      dom.recDistance.textContent = `${rec.distance_km || 3.4} km`;
+      dom.recReductionBadge.innerHTML = `🎉 <strong>${reduction}% less crowded</strong> than your origin point!`;
+      
+      const isMatch = state.selectedPreferences.has(rec.preference_category);
+      dom.recPrefMatchBadge.textContent = isMatch ? '🎯 95% Preference Match' : '🌿 Serene Corridor';
+    }
 
-      // Dispersal Math: min F(x) = 0.3*(dist/10) + 0.5*(crowd/100) - 0.2*cultural - prefMatch
-      const score = (0.3 * (dist / 10)) + (0.5 * (cand.crowdScore / 100)) - (0.2 * (cand.culturalValue || 0.8)) - cand.prefMatchBonus;
-      cand.dispersalScore = score;
-    });
+    // 3. Gemini 1.5 Flash Tour Guide Story
+    if (dom.geminiStoryText) {
+      dom.geminiStoryText.textContent = geminiStory || `Welcome to ${rec ? rec.name : 'this serene spot'}! Experience an unhurried visit surrounded by verified cultural heritage and quiet landscapes.`;
+    }
 
-    candidates.sort((a, b) => a.dispersalScore - b.dispersalScore);
+    // 4. Paired Local Merchant Box
+    if (merchant && dom.merchantName) {
+      dom.merchantName.textContent = merchant.name || 'Local Artisan Bakery & Cafe';
+      dom.merchantDesc.textContent = merchant.description || '30-year-old family-owned bakery serving cardamom tea and handmade cookies.';
+      dom.merchantDist.textContent = `📍 ${merchant.dist || '300 m'} from destination (Supporting Local Economy)`;
+      dom.merchantRating.textContent = `⭐ ${merchant.rating || 4.7}`;
+    }
 
-    state.recommendedAlternative = candidates[0];
-    state.topAlternatives = candidates.slice(0, 3);
+    // 5. Top 3 Alternatives Deck
+    if (dom.altDeckGrid) {
+      dom.altDeckGrid.innerHTML = top3.map((alt, i) => `
+        <div class="alt-deck-card" onclick="window.GeoDivertApp.selectSpotById('${alt.id}')" style="
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          padding: 1rem;
+          cursor: pointer;
+          transition: var(--transition);
+        ">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+            <span style="font-size:0.75rem; font-weight:700; color:var(--primary); background:rgba(56,189,248,0.1); padding:2px 8px; border-radius:12px;">Rank #${i+1}</span>
+            <span style="font-size:0.8rem; color:#34d399; font-weight:700;">🟢 ${alt.crowd_score}% Crowd</span>
+          </div>
+          <h4 style="font-size:1.05rem; margin-bottom:0.25rem;">${alt.name}</h4>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.6rem;">${alt.category} • ${alt.distance_km ? alt.distance_km.toFixed(1) : 4} km away</p>
+          <button style="width:100%; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border-color); padding:5px; border-radius:6px; font-size:0.75rem; cursor:pointer;">
+            Inspect Spot →
+          </button>
+        </div>
+      `).join('');
+    }
 
-    const pairedMerchant = {
-      name: `${state.recommendedAlternative.name} Heritage Tea & Bakery`,
-      type: 'restaurant',
-      rating: 4.7,
-      dist: '300 m',
-      description: '30-year-old family-owned artisan bakery serving hot cardamom tea and fresh handmade cookies.'
+    // 6. Comparison Duel Progress Bars
+    if (dom.compOrigName && rec) {
+      dom.compOrigName.textContent = locationName || 'Origin Point';
+      dom.compOrigPercent.textContent = `${origin.crowd_score || 91}% 🔴 HIGH`;
+      dom.compOrigBar.style.width = `${origin.crowd_score || 91}%`;
+
+      dom.compAltName.textContent = rec.name;
+      dom.compAltPercent.textContent = `${rec.crowd_score}% 🟢 SERENE`;
+      dom.compAltBar.style.width = `${rec.crowd_score}%`;
+      dom.compDiffBadge.innerHTML = `📉 <strong>${reduction}% Crowd Reduction</strong> achieved with GeoDivert dynamic routing!`;
+    }
+
+    // 7. Navigation Route Info
+    if (dom.routeStart && rec) {
+      dom.routeStart.textContent = locationName || 'Origin Location';
+      dom.routeEnd.textContent = rec.name;
+      dom.routeDistance.textContent = `${rec.distance_km || 3.4} km`;
+      const mins = Math.round((rec.distance_km || 3.4) * 2.5) + 4;
+      dom.routeDuration.textContent = `🚗 ${mins} mins`;
+    }
+
+    // 8. Draw 3D Navigation Route on MapLibre & Update Heatmap
+    if (window.GeoDivertMap && rec) {
+      const originPoint = { lat: state.currentLat, lng: state.currentLon };
+      const destPoint = { lat: rec.lat, lng: rec.lng || rec.lon };
+      window.GeoDivertMap.drawRoute(originPoint, destPoint);
+      window.GeoDivertMap.updateHeatmap(data.all_candidates || state.monitoredSpots);
+    }
+  }
+
+  function renderFallbackDispersal(lat, lon, locationName) {
+    const candidate = state.monitoredSpots.find(s => (s.crowd_score || s.crowdScore) < 50) || state.monitoredSpots[2];
+    const data = {
+      origin: { crowd_score: 91, crowd_status: 'HIGH' },
+      recommended_alternative: {
+        id: candidate.id,
+        name: candidate.name,
+        category: candidate.category,
+        lat: candidate.lat,
+        lng: candidate.lng || candidate.lon,
+        crowd_score: candidate.crowd_score || candidate.crowdScore || 28,
+        crowd_status: 'SERENE',
+        distance_km: 3.4,
+        image: 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80',
+        preference_category: candidate.preference_category || 'sacred'
+      },
+      top_3_alternatives: state.monitoredSpots.slice(2, 5).map(s => ({
+        id: s.id,
+        name: s.name,
+        category: s.category,
+        crowd_score: s.crowd_score || s.crowdScore || 30,
+        distance_km: 4.2
+      })),
+      paired_merchant: {
+        name: 'Gondwana Heritage Artisan Bakery & Cafe',
+        description: '30-year-old family-owned bakery serving freshly baked cardamom cookies and herbal tea.',
+        dist: '300 m',
+        rating: 4.7
+      },
+      crowd_reduction_percent: 63,
+      gemini_tour_guide_story: `Welcome to ${candidate.name} in Nagpur! While ${locationName} is experiencing heavy visitor congestion today, you have arrived at one of the city's most peaceful cultural corridors. Enjoy the uncrowded historic grounds, and be sure to stop by Gondwana Heritage Bakery just around the corner for some fresh handmade treats!`
     };
 
-    const fallbackStory = `Welcome to ${state.recommendedAlternative.name} in Nagpur! While ${orig.name} is currently experiencing heavy crowd congestion (${orig.crowdScore}%), you have arrived at one of the city's most serene cultural treasures. ${state.recommendedAlternative.description} Enjoy the peaceful surroundings without ticket queues or traffic delays. When you are done exploring, be sure to stop by ${pairedMerchant.name} just around the corner to support the local family bakery!`;
-
-    renderAllResults(orig, state.recommendedAlternative, state.topAlternatives, fallbackStory, pairedMerchant);
+    renderDispersalResults(data, locationName);
   }
 
-  function renderAllResults(orig, rec, top3, geminiStory, pairedMerchant) {
-    renderRecommendationCard(rec, orig, geminiStory);
-    renderTop3AlternativesDeck(top3);
-    renderComparisonDuel(orig, rec);
-    renderRouteInfo(orig, rec);
-    renderHospitalityGrid(rec, 'all', pairedMerchant);
+  // --- PREFERENCES MODAL HELPERS ---
 
-    // Update 3D Map
-    if (window.GeoDivertMap) {
-      window.GeoDivertMap.drawRoute(orig, rec);
-    }
-  }
-
-  // --- RENDERING MODULES ---
-
-  function renderSelectedDestCard(dest) {
-    if (!dom.destName) return;
-    dom.destImg.src = dest.image;
-    dom.destName.textContent = dest.name;
-    dom.destCategory.textContent = dest.category;
-    dom.destLocation.textContent = `${dest.city || 'Nagpur'}, India`;
-    dom.destCrowdPercent.textContent = `${dest.crowdScore}%`;
-    dom.destCrowdMeterFill.style.width = `${dest.crowdScore}%`;
-
-    dom.destCrowdStatus.textContent = `${dest.crowdStatus} CROWD`;
-    dom.destCrowdStatus.style.background = dest.crowdStatus === 'HIGH' ? '#f43f5e' : dest.crowdStatus === 'MEDIUM' ? '#f59e0b' : '#10b981';
-
-    dom.destRating.textContent = `⭐ ${dest.rating || 4.4} (${dest.reviewCount || '25k'})`;
-    dom.destWaitTime.textContent = `⏱️ ${dest.waitTime || '~50 min wait'}`;
-    dom.destPeakHours.textContent = `⏰ Peak: ${dest.peakHours || '11 AM - 5 PM'}`;
-  }
-
-  function renderRecommendationCard(rec, orig, geminiStory) {
-    if (!dom.recName || !rec) return;
-    dom.recImg.src = rec.image;
-    dom.recName.textContent = rec.name;
-    dom.recCategory.textContent = rec.category;
-    dom.recCrowdPercent.textContent = `${rec.crowdScore}%`;
-    dom.recRating.textContent = `⭐ ${rec.rating || 4.7}`;
-    dom.recDistance.textContent = `${rec.computedDist ? rec.computedDist.toFixed(1) : 5.2} km`;
-
-    const reduction = Math.max(0, orig.crowdScore - rec.crowdScore);
-    dom.recReductionBadge.innerHTML = `🎉 <strong>${reduction}% less crowded</strong> than ${orig.name}`;
-
-    const isMatch = state.selectedPreferences.has(rec.preferenceCategory);
-    dom.recPrefMatchBadge.textContent = isMatch ? `🎯 95% Preference Match` : `🌿 Serene Corridor`;
-
-    dom.recReasonsList.innerHTML = `
-      <li>🟢 <strong>Zero Congestion:</strong> Only ${rec.crowdScore}% capacity utilized right now.</li>
-      <li>⏱️ <strong>Save ~45 mins:</strong> Skip long security queues and bumper-to-bumper traffic.</li>
-      <li>🌿 <strong>Cultural Value:</strong> Verified high-rated cultural landmark in Nagpur.</li>
-    `;
-
-    // Render Gemini 1.5 Flash Tour Guide Story
-    if (dom.geminiStoryText) {
-      dom.geminiStoryText.textContent = geminiStory || `Welcome to ${rec.name}! Experience a peaceful, uncrowded visit surrounded by authentic heritage and nature.`;
-    }
-  }
-
-  function renderTop3AlternativesDeck(top3) {
-    if (!dom.altDeckGrid) return;
-    dom.altDeckGrid.innerHTML = (top3 || []).map((alt, i) => `
-      <div class="alt-deck-card" onclick="window.GeoDivertApp.selectDestination('${alt.id}')" style="
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        padding: 1rem;
-        cursor: pointer;
-        transition: var(--transition);
-      ">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-          <span style="font-size:0.75rem; font-weight:700; color:var(--primary); background:rgba(56,189,248,0.1); padding:3px 8px; border-radius:12px;">Rank #${i+1} Alternative</span>
-          <span style="font-size:0.8rem; color:#34d399; font-weight:700;">🟢 ${alt.crowdScore}% Crowd</span>
-        </div>
-        <h4 style="font-size:1.05rem; margin-bottom:0.25rem;">${alt.name}</h4>
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">${alt.category} • ${alt.computedDist ? alt.computedDist.toFixed(1) : 4} km away</p>
-        <button style="width:100%; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border-color); padding:6px; border-radius:8px; font-size:0.8rem; cursor:pointer;">
-          Inspect This Spot →
-        </button>
-      </div>
-    `).join('');
-  }
-
-  function renderComparisonDuel(orig, alt) {
-    if (!dom.compOrigName || !alt) return;
-    dom.compOrigName.textContent = orig.name;
-    dom.compOrigPercent.textContent = `${orig.crowdScore}% 🔴 HIGH`;
-    dom.compOrigBar.style.width = `${orig.crowdScore}%`;
-
-    dom.compAltName.textContent = alt.name;
-    dom.compAltPercent.textContent = `${alt.crowdScore}% 🟢 LOW`;
-    dom.compAltBar.style.width = `${alt.crowdScore}%`;
-
-    const diff = orig.crowdScore - alt.crowdScore;
-    dom.compDiffBadge.innerHTML = `📉 <strong>${diff}% Crowd Reduction</strong> achieved with GeoDivert dynamic routing!`;
-  }
-
-  function renderRouteInfo(orig, alt) {
-    if (!dom.routeStart || !alt) return;
-    dom.routeStart.textContent = orig.name;
-    dom.routeEnd.textContent = alt.name;
-    dom.routeDistance.textContent = `${alt.computedDist ? alt.computedDist.toFixed(1) : 5.2} km`;
-    
-    const driveMins = Math.round((alt.computedDist || 5) * 2.5) + 4;
-    dom.routeDuration.textContent = `🚗 ${driveMins} mins`;
-  }
-
-  function renderHospitalityGrid(dest, filter, pairedMerchant) {
-    if (!dom.hospitalityGrid || !dest) return;
-
-    let items = dest.hospitality ? [...dest.hospitality] : [];
-    
-    if (pairedMerchant && pairedMerchant.name) {
-      items.unshift(pairedMerchant);
-    }
-
-    if (items.length === 0) {
-      items = [
-        { name: `${dest.name} Artisan Cafe`, type: 'restaurant', rating: 4.7, dist: '0.2 km', desc: 'Family-owned cafe serving traditional tea and snacks.' },
-        { name: 'Nagpur Handloom Souvenirs', type: 'experience', rating: 4.8, dist: '0.4 km', desc: 'Handcrafted items supporting rural artisans.' }
-      ];
-    }
-
-    if (filter !== 'all') {
-      items = items.filter(h => (h.type || 'restaurant') === filter);
-    }
-
-    dom.hospitalityGrid.innerHTML = items.map(h => `
-      <div class="hosp-card" style="
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        padding: 1.25rem;
-      ">
-        <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
-          <span style="font-size:0.8rem; color:var(--primary); font-weight:600;">${(h.type || 'restaurant').toUpperCase()}</span>
-          <span style="font-size:0.85rem; color:#fbbf24; font-weight:700;">⭐ ${h.rating || 4.6}</span>
-        </div>
-        <h4 style="font-size:1.1rem; margin-bottom:0.4rem;">${h.name}</h4>
-        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">${h.description || h.desc || 'Local independent merchant near destination'}</p>
-        <span style="font-size:0.8rem; color:#34d399; font-weight:600;">📍 ${h.dist || '300 m'} away from serene spot</span>
-      </div>
-    `).join('');
-  }
-
-  function renderFeaturedDestinationsGrid() {
-    if (!dom.featuredGrid) return;
-    dom.featuredGrid.innerHTML = state.destinations.slice(0, 6).map(dest => `
-      <div class="dest-card" onclick="window.GeoDivertApp.selectDestination('${dest.id}')" style="cursor:pointer;">
-        <div class="dest-card-banner">
-          <img src="${dest.image}" alt="${dest.name}" />
-          <div class="crowd-status-pill" style="background:${dest.crowdStatus === 'HIGH' ? '#f43f5e' : dest.crowdStatus === 'MEDIUM' ? '#f59e0b' : '#10b981'};">
-            ${dest.crowdStatus} (${dest.crowdScore}%)
-          </div>
-        </div>
-        <div class="dest-card-body">
-          <h3>${dest.name}</h3>
-          <p style="font-size:0.85rem; color:var(--text-muted);">${dest.category} • ${dest.city}</p>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  function renderPreferencesModalGrid() {
+  function renderPreferencesModal() {
     if (!dom.prefGrid) return;
     dom.prefGrid.innerHTML = state.categories.map(cat => `
       <div class="pref-cat-card ${state.selectedPreferences.has(cat.id) ? 'selected' : ''}" 
@@ -600,92 +513,21 @@
     `).join('');
   }
 
-  function renderAdminTable() {
-    if (!dom.adminTableBody) return;
-    dom.adminTableBody.innerHTML = state.destinations.map(dest => `
-      <tr>
-        <td><strong>${dest.name}</strong> (${dest.city})</td>
-        <td>
-          <span style="color:${dest.crowdStatus === 'HIGH' ? '#fb7185' : '#34d399'}; font-weight:700;">
-            ${dest.crowdScore}% ${dest.crowdStatus}
-          </span>
-        </td>
-        <td>${Math.round(dest.crowdScore * 40)} / 4,000 visitors</td>
-        <td>${dest.crowdStatus === 'HIGH' ? '⚠️ Dispersal Active' : '🟢 Optimal Capacity'}</td>
-        <td>
-          <button onclick="window.GeoDivertApp.simulateSurge('${dest.id}')" style="
-            background: var(--primary-dark);
-            color: #fff;
-            border: none;
-            padding: 4px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.75rem;
-          ">
-            Toggle Surge
-          </button>
-        </td>
-      </tr>
-    `).join('');
-  }
-
   function togglePreference(catId) {
     if (state.selectedPreferences.has(catId)) {
       state.selectedPreferences.delete(catId);
     } else {
       state.selectedPreferences.add(catId);
     }
-    updatePrefModalSelectionUI();
-  }
-
-  function updatePrefModalSelectionUI() {
-    renderPreferencesModalGrid();
+    renderPreferencesModal();
     if (dom.prefCountIndicator) {
       dom.prefCountIndicator.textContent = `${state.selectedPreferences.size} categories selected`;
     }
   }
 
-  function updateNavPrefBadge() {
+  function updatePrefBadge() {
     if (dom.navPrefCount) {
       dom.navPrefCount.textContent = state.selectedPreferences.size > 0 ? `${state.selectedPreferences.size} Active` : 'Set';
-    }
-  }
-
-  function handleSearchInput() {
-    const val = dom.searchInput.value.trim().toLowerCase();
-    if (!val) {
-      dom.autocompleteDropdown.innerHTML = '';
-      return;
-    }
-
-    const matches = state.destinations.filter(d => 
-      d.name.toLowerCase().includes(val) || 
-      d.category.toLowerCase().includes(val)
-    );
-
-    dom.autocompleteDropdown.innerHTML = matches.map(m => `
-      <div onclick="window.GeoDivertApp.selectDestination('${m.id}')" style="
-        padding: 8px 12px;
-        cursor: pointer;
-        border-bottom: 1px solid var(--border-color);
-        color: #fff;
-      ">
-        <strong>${m.name}</strong> <span style="font-size:0.8rem; color:#94a3b8;">(${m.category})</span>
-      </div>
-    `).join('');
-  }
-
-  function simulateSurge(destId) {
-    const dest = state.destinations.find(d => d.id === destId);
-    if (dest) {
-      dest.crowdScore = dest.crowdScore >= 80 ? 25 : 92;
-      dest.crowdStatus = dest.crowdScore >= 75 ? 'HIGH' : 'LOW';
-      renderAdminTable();
-      renderFeaturedDestinationsGrid();
-      if (state.selectedDestination && state.selectedDestination.id === destId) {
-        selectDestination(destId);
-      }
-      showToast(`⚡ Surge toggled for ${dest.name}: ${dest.crowdScore}% (${dest.crowdStatus})`);
     }
   }
 
@@ -705,22 +547,26 @@
     setTimeout(() => toast.remove(), 4000);
   }
 
-  function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  // Export Global API
+  // Global APIs
   window.GeoDivertApp = {
-    selectDestination: selectDestination,
-    togglePreference: togglePreference,
-    simulateSurge: simulateSurge
+    selectSpotById: function (id) {
+      const spot = state.monitoredSpots.find(s => s.id === id);
+      if (spot) {
+        if (dom.searchInput) dom.searchInput.value = spot.name;
+        runDispersalPipeline(spot.lat, spot.lng || spot.lon, spot.name);
+      }
+    },
+    selectSpot: function (spot) {
+      if (spot) {
+        if (dom.searchInput) dom.searchInput.value = spot.name;
+        runDispersalPipeline(spot.lat, spot.lng || spot.lon, spot.name);
+      }
+    },
+    handleMapClick: function (lat, lng) {
+      showToast(`📍 Clicked map coordinate: [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
+      runDispersalPipeline(lat, lng, 'Map Selected Point');
+    },
+    togglePreference: togglePreference
   };
 
 })();

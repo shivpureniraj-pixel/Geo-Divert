@@ -1,23 +1,25 @@
 /**
  * GeoDivert – Main Reactive Application Engine for Amravati
- * Dynamic DecisionTree ML Predictions, User GPS Tracking, 3D Spatial Dispersal, and Gemini 1.5 Flash
+ * Dynamic DecisionTree ML Predictions, Real-time User GPS Tracking, 3D Spatial Dispersal, Web Speech Audio, and Gemini 1.5 Flash
  */
 
 (function () {
   'use strict';
 
-  // Application State
+  // Reactive Application State
   const state = {
     currentLat: 20.9320, // Amravati Center
     currentLon: 77.7523, // Amravati Center
-    currentLocationName: 'Shri Ambadevi Temple, Amravati',
-    userGpsLat: null,
-    userGpsLon: null,
+    currentLocationName: '📍 Your Current Location',
+    isExplicitSpot: false,
+    userGpsLat: 20.9320,
+    userGpsLon: 77.7523,
     selectedPreferences: new Set(['history', 'nature']),
     hour: 14, // 2 PM default (Midday peak)
     dayOfWeek: 6, // Sunday (Weekend default)
     isWeekend: true,
     monitoredSpots: [],
+    isSpeaking: false,
     categories: [
       { id: 'nature', name: 'Nature & Lakes', icon: '🌿', description: 'Freshwater lakes, scenic valleys, and eco-trails' },
       { id: 'history', name: 'History & Forts', icon: '🏰', description: 'Hilltop fortifications, ramparts, and ancient landmarks' },
@@ -43,11 +45,11 @@
       window.GeoDivertMap.initMap('map-container', { lat: state.currentLat, lon: state.currentLon });
     }
 
-    // 2. Detect User Location via GPS
+    // 2. Automatically request and identify user location via GPS
     detectUserLocation(false);
 
-    // 3. Run initial dispersal pipeline
-    runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
+    // 3. Run initial dispersal pipeline from user location
+    runDispersalPipeline(state.currentLat, state.currentLon, 'Your Current Location');
   });
 
   function cacheElements() {
@@ -61,10 +63,13 @@
       timeDisplayLabel: document.getElementById('time-display-label'),
       btnDayWeekday: document.getElementById('btn-day-weekday'),
       btnDayWeekend: document.getElementById('btn-day-weekend'),
+      btnRecenter: document.getElementById('btn-recenter-user'),
+      btnVoiceGuide: document.getElementById('btn-voice-guide'),
 
       // Origin Spot Elements
       destName: document.getElementById('dest-name'),
       destCategory: document.getElementById('dest-category'),
+      destLocation: document.getElementById('dest-location'),
       destCrowdPercent: document.getElementById('dest-crowd-percent'),
       destDot: document.getElementById('dest-dot'),
       destCrowdMeterFill: document.getElementById('dest-crowd-meter-fill'),
@@ -128,12 +133,27 @@
       });
     }
 
+    if (dom.btnRecenter) {
+      dom.btnRecenter.addEventListener('click', function () {
+        if (window.GeoDivertMap) {
+          window.GeoDivertMap.recenterOnUser();
+          showToast('🎯 Centered map on your GPS location');
+        }
+      });
+    }
+
+    // Voice Tour Guide Audio Playback (Web Speech API)
+    if (dom.btnVoiceGuide) {
+      dom.btnVoiceGuide.addEventListener('click', toggleSpeechAudio);
+    }
+
     // Quick Chips for Amravati
     dom.quickChips.forEach(chip => {
       chip.addEventListener('click', function () {
         const query = this.getAttribute('data-query');
         if (dom.searchInput) dom.searchInput.value = query;
-        showToast(`📍 Evaluating crowd for "${query}"...`);
+        state.isExplicitSpot = true;
+        showToast(`📍 Analyzing crowd for "${query}"...`);
         runDispersalPipeline(state.currentLat, state.currentLon, query);
       });
     });
@@ -154,7 +174,7 @@
         if (dom.btnDayWeekend) dom.btnDayWeekend.classList.remove('active');
         state.dayOfWeek = 2; // Wednesday
         state.isWeekend = false;
-        showToast('🏢 Weekday crowd curves active.');
+        showToast('🏢 Weekday crowd curves loaded.');
         runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
       });
     }
@@ -165,7 +185,7 @@
         if (dom.btnDayWeekday) dom.btnDayWeekday.classList.remove('active');
         state.dayOfWeek = 6; // Sunday
         state.isWeekend = true;
-        showToast('🎉 Weekend crowd surge curves active.');
+        showToast('🎉 Weekend surge curves loaded.');
         runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
       });
     }
@@ -214,7 +234,7 @@
   }
 
   /**
-   * Geolocation with User Location Radar Identification
+   * Geolocation with Immediate Persistent User Radar Identification
    */
   async function detectUserLocation(notifyUser) {
     if (navigator.geolocation) {
@@ -227,15 +247,16 @@
           state.userGpsLon = lon;
           state.currentLat = lat;
           state.currentLon = lon;
-          state.currentLocationName = 'My Location (GPS)';
-          if (dom.searchInput) dom.searchInput.value = 'My Current Location (GPS)';
+          state.isExplicitSpot = false;
+          state.currentLocationName = '📍 Your Current Location (GPS)';
+          if (dom.searchInput) dom.searchInput.value = '📍 Your Current Location (GPS)';
           
           if (window.GeoDivertMap) {
             window.GeoDivertMap.setUserLocation(lat, lon);
-            window.GeoDivertMap.setCenter(lat, lon, 13.5);
+            window.GeoDivertMap.setCenter(lat, lon, 13.8);
           }
-          showToast(`📍 User located: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
-          runDispersalPipeline(lat, lon, 'My Current Location');
+          showToast(`📍 User location identified: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
+          runDispersalPipeline(lat, lon, 'Your Current Location');
         },
         async function (err) {
           console.log('GPS info:', err.message);
@@ -249,23 +270,27 @@
   }
 
   function useDefaultAmravatiLocation(notifyUser) {
+    state.userGpsLat = 20.9320;
+    state.userGpsLon = 77.7523;
     state.currentLat = 20.9320;
     state.currentLon = 77.7523;
-    state.currentLocationName = 'Shri Ambadevi Temple, Amravati';
-    if (dom.searchInput) dom.searchInput.value = 'Shri Ambadevi Temple, Amravati';
+    state.isExplicitSpot = false;
+    state.currentLocationName = '📍 Your Location (Amravati)';
+    if (dom.searchInput) dom.searchInput.value = '📍 Your Location (Amravati)';
     
     if (window.GeoDivertMap) {
       window.GeoDivertMap.setUserLocation(20.9320, 77.7523);
-      window.GeoDivertMap.setCenter(20.9320, 77.7523, 13);
+      window.GeoDivertMap.setCenter(20.9320, 77.7523, 13.5);
     }
-    if (notifyUser) showToast('📍 Centered on Amravati, Maharashtra');
-    runDispersalPipeline(20.9320, 77.7523, 'Shri Ambadevi Temple, Amravati');
+    if (notifyUser) showToast('📍 Centered on your location in Amravati');
+    runDispersalPipeline(20.9320, 77.7523, 'Your Current Location');
   }
 
   function handleSearchSubmit() {
     const query = dom.searchInput ? dom.searchInput.value.trim() : '';
     if (!query) return;
 
+    state.isExplicitSpot = true;
     showToast(`🔍 Evaluating "${query}"...`);
     runDispersalPipeline(state.currentLat, state.currentLon, query);
   }
@@ -276,7 +301,7 @@
   async function runDispersalPipeline(lat, lon, locationName) {
     state.currentLat = lat;
     state.currentLon = lon;
-    state.currentLocationName = locationName || 'Amravati, Maharashtra';
+    state.currentLocationName = locationName || 'Your Current Location';
 
     if (dom.geminiStoryText) {
       dom.geminiStoryText.innerHTML = `<em>✨ Gemini 1.5 Flash is synthesizing an interactive tour narrative...</em>`;
@@ -288,7 +313,7 @@
       hour: state.hour,
       day_of_week: state.dayOfWeek,
       preferences: Array.from(state.selectedPreferences),
-      selected_spot_name: locationName
+      selected_spot_name: state.isExplicitSpot ? locationName : null
     };
 
     try {
@@ -315,7 +340,6 @@
   function renderDispersalResults(data, locationName) {
     const origin = data.origin || {};
     const rec = data.recommended_alternative;
-    const top3 = data.top_3_alternatives || [];
     const allSpots = data.all_candidates || [];
     const merchant = data.paired_merchant || {};
     const geminiStory = data.gemini_tour_guide_story;
@@ -324,14 +348,19 @@
 
     state.monitoredSpots = allSpots;
 
-    // 1. Origin Card
+    // 1. Origin Card (Clearly labels user origin vs explicit spot)
     if (dom.destName) {
-      dom.destName.textContent = origin.name || locationName || 'Origin Point';
+      const originDisplay = state.isExplicitSpot ? (origin.name || locationName) : '📍 Your Current Location';
+      dom.destName.textContent = originDisplay;
+      
+      if (dom.destLocation) {
+        dom.destLocation.textContent = `Coordinates: [${(origin.latitude || state.currentLat).toFixed(4)}, ${(origin.longitude || state.currentLon).toFixed(4)}]`;
+      }
+
       const oScore = origin.crowd_score || 95.4;
       dom.destCrowdPercent.textContent = `${oScore}%`;
       dom.destCrowdMeterFill.style.width = `${oScore}%`;
       
-      // Update circle dot color
       if (dom.destDot) {
         dom.destDot.className = 'density-dot ' + (oScore >= 70 ? 'dot-red' : oScore >= 40 ? 'dot-yellow' : 'dot-green');
       }
@@ -341,9 +370,9 @@
 
       if (dom.destAlertMessage) {
         if (oScore >= 70) {
-          dom.destAlertMessage.textContent = `⚠️ High visitor congestion (${oScore}%) predicted for ${origin.name || locationName}. GeoDivert recommends a serene cultural sanctuary nearby.`;
+          dom.destAlertMessage.textContent = `⚠️ High visitor congestion (${oScore}%) predicted in your area. GeoDivert has routed an optimal serene cultural sanctuary nearby.`;
         } else {
-          dom.destAlertMessage.textContent = `🟢 Comfortable capacity utilization (${oScore}%). You can explore freely without major ticket delays.`;
+          dom.destAlertMessage.textContent = `🟢 Comfortable capacity utilization (${oScore}%). Peaceful environment to explore freely.`;
         }
       }
     }
@@ -365,7 +394,7 @@
 
     // 3. Gemini Tour Guide Story
     if (dom.geminiStoryText) {
-      dom.geminiStoryText.textContent = geminiStory || `Welcome to ${rec ? rec.name : 'Amravati'}! Avoid peak visitor traffic and enjoy a peaceful, verified cultural experience. Be sure to stop by ${merchant.name || 'the local heritage bakery'} for fresh treats!`;
+      dom.geminiStoryText.textContent = geminiStory || `Welcome to ${rec ? rec.name : 'Amravati'}! Escape peak tourist traffic and enjoy a peaceful, verified cultural experience. When done exploring, stop by ${merchant.name || 'the local heritage bakery'} for fresh treats!`;
     }
 
     // 4. Paired Local Merchant Box
@@ -412,7 +441,8 @@
       const originPoint = { 
         lat: origin.latitude || state.currentLat, 
         lon: origin.longitude || state.currentLon, 
-        name: origin.name || locationName, 
+        name: state.isExplicitSpot ? (origin.name || locationName) : 'Your Location',
+        isExplicitSpot: state.isExplicitSpot,
         crowd_score: origin.crowd_score 
       };
       const destPoint = { 
@@ -422,6 +452,8 @@
         crowd_score: rec.crowd_score 
       };
 
+      // Always update user location radar beacon
+      window.GeoDivertMap.setUserLocation(state.userGpsLat, state.userGpsLon);
       window.GeoDivertMap.drawRoute(originPoint, destPoint, route.coordinates);
       window.GeoDivertMap.updateHeatmap(allSpots);
       window.GeoDivertMap.renderMarkers(allSpots, originPoint, destPoint);
@@ -429,7 +461,6 @@
   }
 
   function renderFallbackDispersal(lat, lon, locationName) {
-    const isAmbadevi = locationName.toLowerCase().includes('ambadevi');
     const origScore = state.isWeekend ? (state.hour >= 11 && state.hour <= 18 ? 95.4 : 65.4) : (state.hour >= 11 && state.hour <= 18 ? 66.3 : 40.0);
     const calmScore = state.isWeekend ? (state.hour >= 16 && state.hour <= 19 ? 28.5 : 21.1) : 16.1;
 
@@ -465,10 +496,39 @@
         duration_mins: 11
       },
       crowd_reduction_percent: Math.max(0, Math.round(origScore - calmScore)),
-      gemini_tour_guide_story: `Welcome to ${recSpot.name}! While ${locationName} is experiencing peak visitor traffic (${origScore}%), you have arrived at one of Amravati's most serene freshwater sanctuaries. Enjoy the shaded lakeside breeze and peaceful botanical paths without ticket lines. When done exploring, stop by Raghuveer Sweets just down the road for hot herbal tea and sweets!`
+      gemini_tour_guide_story: `Welcome to ${recSpot.name}! While your current area is experiencing peak traffic (${origScore}%), you have arrived at one of Amravati's most serene freshwater sanctuaries. Enjoy the shaded lakeside breeze and peaceful botanical paths without ticket lines. When done exploring, stop by Raghuveer Sweets just down the road for hot herbal tea and sweets!`
     };
 
     renderDispersalResults(data, locationName);
+  }
+
+  function toggleSpeechAudio() {
+    if (!('speechSynthesis' in window)) {
+      showToast('⚠️ Speech Synthesis not supported on this browser.');
+      return;
+    }
+
+    if (state.isSpeaking) {
+      window.speechSynthesis.cancel();
+      state.isSpeaking = false;
+      if (dom.btnVoiceGuide) dom.btnVoiceGuide.textContent = '🔊 Listen Audio';
+      return;
+    }
+
+    const storyText = dom.geminiStoryText ? dom.geminiStoryText.textContent : '';
+    if (!storyText || storyText.includes('Synthesizing')) return;
+
+    const utterance = new SpeechSynthesisUtterance(storyText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = function () {
+      state.isSpeaking = false;
+      if (dom.btnVoiceGuide) dom.btnVoiceGuide.textContent = '🔊 Listen Audio';
+    };
+
+    window.speechSynthesis.speak(utterance);
+    state.isSpeaking = true;
+    if (dom.btnVoiceGuide) dom.btnVoiceGuide.textContent = '⏹️ Stop Audio';
   }
 
   function renderPreferencesModal() {
@@ -530,6 +590,7 @@
     selectSpotById: function (id) {
       const spot = state.monitoredSpots.find(s => s.id === id);
       if (spot) {
+        state.isExplicitSpot = true;
         if (dom.searchInput) dom.searchInput.value = spot.name;
         showToast(`📍 Analyzing ${spot.name}...`);
         runDispersalPipeline(spot.lat, spot.lng || spot.lon, spot.name);
@@ -537,12 +598,14 @@
     },
     selectSpot: function (spot) {
       if (spot) {
+        state.isExplicitSpot = true;
         if (dom.searchInput) dom.searchInput.value = spot.name;
         showToast(`📍 Analyzing ${spot.name}...`);
         runDispersalPipeline(spot.lat, spot.lng || spot.lon, spot.name);
       }
     },
     handleMapClick: function (lat, lng) {
+      state.isExplicitSpot = true;
       showToast(`📍 Selected map coordinate: [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
       runDispersalPipeline(lat, lng, 'Map Selected Point');
     },

@@ -22,10 +22,10 @@
     /* Custom density circles and clean map UI */
     .density-dot {
       display: inline-block;
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
-      margin-right: 6px;
+      margin-right: 5px;
       vertical-align: middle;
       box-shadow: 0 0 8px currentColor;
     }
@@ -33,48 +33,16 @@
     .dot-yellow { background: #f59e0b; color: #f59e0b; }
     .dot-red { background: #f43f5e; color: #f43f5e; }
 
-    /* User location radar ping marker */
-    .user-location-marker {
-      position: relative;
-      width: 24px;
-      height: 24px;
-    }
-    .user-location-marker .core-dot {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 14px;
-      height: 14px;
-      background: #38bdf8;
-      border: 2px solid #ffffff;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      box-shadow: 0 0 10px #38bdf8;
-      z-index: 2;
-    }
-    .user-location-marker .pulse-ring {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 32px;
-      height: 32px;
-      border: 2px solid rgba(56, 189, 248, 0.8);
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      animation: userRadarPing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-      z-index: 1;
-    }
     @keyframes userRadarPing {
       0% { width: 14px; height: 14px; opacity: 1; }
       100% { width: 44px; height: 44px; opacity: 0; }
     }
 
-    /* Clean compact map card */
     .clean-map-wrapper {
       position: relative;
       border-radius: 16px;
       overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
       box-shadow: 0 12px 40px rgba(0,0,0,0.6);
       background: #0b1120;
     }
@@ -93,13 +61,12 @@
     .density-legend-bar {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
       font-size: 0.8rem;
       font-weight: 600;
       color: #cbd5e1;
     }
 
-    /* Floating control bar on map */
     .map-controls-float {
       display: flex;
       gap: 8px;
@@ -108,7 +75,7 @@
     .map-btn-compact {
       background: rgba(30, 41, 59, 0.85);
       color: #f8fafc;
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.15);
       padding: 6px 12px;
       border-radius: 8px;
       font-size: 0.78rem;
@@ -124,7 +91,7 @@
 </head>
 <body>
 
-  <!-- Background Ambient Glow -->
+  <!-- Ambient Glows -->
   <div class="ambient-glow-1" aria-hidden="true"></div>
   <div class="ambient-glow-2" aria-hidden="true"></div>
 
@@ -214,18 +181,18 @@
           <span><span class="density-dot dot-green"></span> 🟢 Serene (&lt;40%)</span>
           <span><span class="density-dot dot-yellow"></span> 🟡 Moderate (40-69%)</span>
           <span><span class="density-dot dot-red"></span> 🔴 High Crowd (&ge;70%)</span>
-          <span><span style="color:#38bdf8;">📍</span> You Are Here</span>
+          <span><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#38bdf8; box-shadow:0 0 8px #38bdf8; margin-right:4px;"></span> 📍 You Are Here</span>
         </div>
 
         <div class="map-controls-float">
+          <button type="button" class="map-btn-compact" id="btn-recenter-user">
+            🎯 Recenter on My GPS
+          </button>
           <button type="button" class="map-btn-compact" id="btn-toggle-3d" onclick="window.GeoDivertMap.toggle3D()">
             🏔️ 3D Tilt (70°)
           </button>
           <button type="button" class="map-btn-compact" id="btn-toggle-heatmap" onclick="window.GeoDivertMap.toggleHeatmap()">
             🔥 Heatmap
-          </button>
-          <button type="button" class="map-btn-compact" onclick="window.GeoDivertMap.resetBounds()">
-            🎯 Recenter
           </button>
         </div>
       </div>
@@ -237,13 +204,13 @@
     <!-- 3. COMPACT REAL-TIME ML PREDICTION & DISPERSAL CARDS -->
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem; margin-top:1.25rem;">
       
-      <!-- Selected Origin Spot Card -->
+      <!-- Selected Origin Spot Card (Clearly showing user location) -->
       <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 18px; backdrop-filter: blur(12px);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
           <div>
-            <span style="font-size:0.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px;">Evaluated Anchor Location</span>
-            <h3 id="dest-name" style="font-size:1.2rem; margin-top:3px; color:#fff;">Shri Ambadevi Temple</h3>
-            <p id="dest-category" style="font-size:0.8rem; color:#94a3b8;">Ancient Sacred Heritage</p>
+            <span style="font-size:0.75rem; font-weight:700; color:#38bdf8; text-transform:uppercase; letter-spacing:0.5px;">Starting Point</span>
+            <h3 id="dest-name" style="font-size:1.2rem; margin-top:3px; color:#fff;">📍 Your Current Location</h3>
+            <p id="dest-location" style="font-size:0.8rem; color:#94a3b8;">Coordinates: [20.9320, 77.7523]</p>
           </div>
           <div id="dest-crowd-status-pill" style="display:flex; align-items:center; gap:5px; background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.4); padding:4px 10px; border-radius:20px;">
             <span class="density-dot dot-red" id="dest-dot"></span>
@@ -253,7 +220,7 @@
 
         <div style="margin: 12px 0;">
           <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">
-            <span>ML Predicted Congestion</span>
+            <span>Current Area Predicted Congestion</span>
             <span id="dest-wait-time" style="color:#f43f5e; font-weight:700;">⏱️ ~50 min wait</span>
           </div>
           <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
@@ -262,7 +229,7 @@
         </div>
 
         <p style="font-size:0.82rem; color:#cbd5e1; line-height:1.5;" id="dest-alert-message">
-          ⚠️ High visitor congestion predicted for this time. GeoDivert has routed an optimal calm cultural sanctuary nearby.
+          ⚠️ High visitor congestion predicted in your area. GeoDivert has routed an optimal serene cultural sanctuary nearby.
         </p>
       </div>
 
@@ -270,7 +237,7 @@
       <div style="background: rgba(6, 78, 59, 0.3); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 14px; padding: 18px; backdrop-filter: blur(12px); position:relative;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
           <div>
-            <span style="font-size:0.75rem; font-weight:700; color:#34d399; text-transform:uppercase; letter-spacing:0.5px;">✨ Recommended Serene Spot</span>
+            <span style="font-size:0.75rem; font-weight:700; color:#34d399; text-transform:uppercase; letter-spacing:0.5px;">✨ Recommended Serene Hidden Gem</span>
             <h3 id="rec-name" style="font-size:1.2rem; margin-top:3px; color:#fff;">Wadali Talao & Eco Park</h3>
             <p id="rec-category" style="font-size:0.8rem; color:#34d399;">Scenic Lake & Botanical Park</p>
           </div>
@@ -310,11 +277,16 @@
     <!-- 4. PAIRED LOCAL MERCHANT & GEMINI TOUR GUIDE NARRATIVE -->
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem; margin-top:1.25rem;">
       
-      <!-- Gemini 1.5 Flash Tour Guide Box -->
+      <!-- Gemini 1.5 Flash Tour Guide Box with Web Speech Voice Audio -->
       <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 14px; padding: 18px; backdrop-filter: blur(12px);">
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-          <span style="font-size:1.1rem;">🎙️</span>
-          <strong style="color:#38bdf8; font-size:0.9rem;">Gemini 1.5 Flash Tour Guide Story:</strong>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.1rem;">🎙️</span>
+            <strong style="color:#38bdf8; font-size:0.9rem;">Gemini 1.5 Flash Tour Guide Story:</strong>
+          </div>
+          <button type="button" id="btn-voice-guide" style="background:rgba(56,189,248,0.15); border:1px solid #38bdf8; color:#38bdf8; padding:4px 10px; border-radius:8px; font-size:0.78rem; font-weight:700; cursor:pointer;">
+            🔊 Listen Audio
+          </button>
         </div>
         <p id="gemini-story-text" style="font-size:0.86rem; line-height:1.6; color:#f1f5f9;">
           Synthesizing interactive tour narrative for your serene Amravati route...

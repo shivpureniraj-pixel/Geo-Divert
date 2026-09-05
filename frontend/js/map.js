@@ -1,6 +1,6 @@
 /**
  * GeoDivert – 3D MapLibre Map Engine
- * Renders 3D Terrain, Turn-by-Turn Road Routes, Clean 🟢🟡🔴 Density Badges, and User Location Radar
+ * Renders 3D Terrain, Turn-by-Turn Road Routes, Persistent User GPS Radar Marker, and 🟢🟡🔴 Density Badges
  */
 
 (function () {
@@ -14,15 +14,15 @@
   let currentPitch = 70;
   let activeMarkers = [];
   let userLocationMarker = null;
+  let userCoordinates = [77.7523, 20.9320]; // Default Amravati Center [lon, lat]
   let heatmapVisible = true;
-  let currentCenter = [77.7523, 20.9320]; // Amravati Center
 
   function initMap(containerId, initialCenter) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
     if (initialCenter && initialCenter.lon && initialCenter.lat) {
-      currentCenter = [initialCenter.lon, initialCenter.lat];
+      userCoordinates = [initialCenter.lon, initialCenter.lat];
     }
 
     if (window.maptilersdk) {
@@ -38,8 +38,8 @@
       map = new MapClass({
         container: containerId,
         style: styleUrl,
-        center: currentCenter,
-        zoom: 12.8,
+        center: userCoordinates,
+        zoom: 13.2,
         pitch: currentPitch,
         bearing: -10,
         maxPitch: 85,
@@ -56,11 +56,14 @@
       }
 
       map.on('load', function () {
-        console.log('✅ 3D MapLibre Initialized for Amravati at', currentCenter);
+        console.log('✅ 3D MapLibre Initialized for User Location at', userCoordinates);
         isMapLoaded = true;
 
         setup3DTerrain();
         ensureRouteLayers();
+        
+        // Render initial user location marker
+        renderUserLocationMarker(userCoordinates[1], userCoordinates[0]);
 
         queuedActions.forEach(fn => {
           try { fn(); } catch (err) { console.warn('Queued map error:', err); }
@@ -145,13 +148,15 @@
   }
 
   /**
-   * Sets User Location Radar Marker (Blue Pulsing Beacon)
+   * Always-Persistent User Location Marker (Blue Pulsing Radar Beacon)
    */
-  function setUserLocation(lat, lon) {
-    if (!map) return;
+  function renderUserLocationMarker(lat, lon) {
+    if (!map || !lat || !lon) return;
+
+    userCoordinates = [lon, lat];
 
     if (!isMapLoaded) {
-      queuedActions.push(() => setUserLocation(lat, lon));
+      queuedActions.push(() => renderUserLocationMarker(lat, lon));
       return;
     }
 
@@ -163,12 +168,64 @@
     }
 
     const el = document.createElement('div');
-    el.className = 'user-location-marker';
-    el.innerHTML = `<div class="pulse-ring"></div><div class="core-dot" title="You are here"></div>`;
+    el.style.cssText = `
+      position: relative;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      z-index: 100;
+    `;
+    el.innerHTML = `
+      <div style="
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 16px;
+        height: 16px;
+        background: #38bdf8;
+        border: 2.5px solid #ffffff;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 12px #38bdf8, 0 0 24px rgba(56,189,248,0.8);
+        z-index: 2;
+      "></div>
+      <div style="
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 36px;
+        height: 36px;
+        border: 2px solid rgba(56, 189, 248, 0.9);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        animation: userRadarPing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        z-index: 1;
+      "></div>
+      <div style="
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(15, 23, 42, 0.95);
+        color: #38bdf8;
+        padding: 2px 7px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 800;
+        white-space: nowrap;
+        border: 1px solid rgba(56, 189, 248, 0.5);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+      ">📍 You Are Here</div>
+    `;
 
     userLocationMarker = new MarkerClass({ element: el })
       .setLngLat([lon, lat])
       .addTo(map);
+  }
+
+  function setUserLocation(lat, lon) {
+    userCoordinates = [lon, lat];
+    renderUserLocationMarker(lat, lon);
   }
 
   /**
@@ -257,7 +314,7 @@
   }
 
   /**
-   * Renders Clean Markers with 🟢🟡🔴 Circular Density Indicators
+   * Renders Tourist Destination Markers with 🟢🟡🔴 Circular Density Indicators
    */
   function renderMarkers(spots, originPoint, recPoint) {
     if (!map) return;
@@ -267,6 +324,7 @@
       return;
     }
 
+    // Remove old tourist destination markers (userLocationMarker is preserved!)
     activeMarkers.forEach(m => m.remove());
     activeMarkers = [];
 
@@ -275,8 +333,8 @@
 
     if (!MarkerClass) return;
 
-    // 1. Origin Marker (🔴 High Crowd Pin)
-    if (originPoint && originPoint.lat && (originPoint.lon || originPoint.lng)) {
+    // 1. If Origin is a SPECIFIC tourist spot (not the user's GPS), render an origin pin
+    if (originPoint && originPoint.isExplicitSpot && originPoint.lat && (originPoint.lon || originPoint.lng)) {
       const el = document.createElement('div');
       const score = originPoint.crowd_score || 95;
       const dotColor = score >= 70 ? '#f43f5e' : score >= 40 ? '#f59e0b' : '#10b981';
@@ -297,7 +355,7 @@
         white-space: nowrap;
         transform: translate(-50%, -50%);
       `;
-      el.innerHTML = `<span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:${dotColor}; box-shadow:0 0 6px ${dotColor};"></span> <span>${originPoint.name || 'Origin'}: <strong>${score}%</strong></span>`;
+      el.innerHTML = `<span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:${dotColor}; box-shadow:0 0 6px ${dotColor};"></span> <span>${originPoint.name}: <strong>${score}%</strong></span>`;
 
       const m = new MarkerClass({ element: el })
         .setLngLat([originPoint.lon || originPoint.lng, originPoint.lat])
@@ -317,7 +375,7 @@
         border-radius: 18px;
         font-weight: 800;
         font-size: 11px;
-        box-shadow: 0 0 16px rgba(16,185,129,0.7);
+        box-shadow: 0 0 16px rgba(16,185,129,0.8);
         border: 2px solid #34d399;
         cursor: pointer;
         display: flex;
@@ -325,6 +383,7 @@
         gap: 6px;
         white-space: nowrap;
         transform: translate(-50%, -50%);
+        z-index: 50;
       `;
       el.innerHTML = `<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#34d399; box-shadow:0 0 8px #34d399;"></span> <span>✨ ${recPoint.name}: <strong>${score}%</strong></span>`;
 
@@ -334,7 +393,7 @@
       activeMarkers.push(m);
     }
 
-    // 3. Other Monitored Amravati Spots (Clean minimal circular dots)
+    // 3. Other Monitored Amravati Spots (Clean circular density dots)
     (spots || []).forEach(spot => {
       if (originPoint && spot.name === originPoint.name) return;
       if (recPoint && spot.name === recPoint.name) return;
@@ -387,7 +446,7 @@
   }
 
   /**
-   * Draws OSRM Navigation Road Route
+   * Draws OSRM Navigation Road Route from User Location / Origin -> Destination
    */
   function drawRoute(origin, destination, routeCoords) {
     if (!map || !origin || !destination) return;
@@ -471,9 +530,15 @@
   }
 
   function setCenter(lat, lon, zoom) {
-    currentCenter = [lon, lat];
+    userCoordinates = [lon, lat];
     if (map) {
-      map.flyTo({ center: [lon, lat], zoom: zoom || 13, pitch: currentPitch, duration: 800 });
+      map.flyTo({ center: [lon, lat], zoom: zoom || 13.5, pitch: currentPitch, duration: 800 });
+    }
+  }
+
+  function recenterOnUser() {
+    if (map && userCoordinates) {
+      map.flyTo({ center: userCoordinates, zoom: 14.0, pitch: currentPitch, duration: 900 });
     }
   }
 
@@ -494,14 +559,12 @@
     initMap: initMap,
     setCenter: setCenter,
     setUserLocation: setUserLocation,
+    renderUserLocationMarker: renderUserLocationMarker,
     updateHeatmap: updateHeatmap,
     renderMarkers: renderMarkers,
     drawRoute: drawRoute,
-    resetBounds: function () {
-      if (map) {
-        map.flyTo({ center: currentCenter, zoom: 12.8, pitch: currentPitch, duration: 700 });
-      }
-    },
+    recenterOnUser: recenterOnUser,
+    resetBounds: recenterOnUser,
     toggle3D: toggle3D,
     toggleHeatmap: toggleHeatmap
   };

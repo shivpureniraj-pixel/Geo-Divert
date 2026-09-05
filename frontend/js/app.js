@@ -8,12 +8,12 @@
 
   // Reactive Application State
   const state = {
-    currentLat: 20.9320, // Amravati Center
-    currentLon: 77.7523, // Amravati Center
-    currentLocationName: '📍 Your Current Location',
+    currentLat: 20.9374, // Rajkamal Chowk, Amravati Center
+    currentLon: 77.7593, // Rajkamal Chowk, Amravati Center
+    currentLocationName: '📍 Your Location (Rajkamal Chowk, Amravati)',
     isExplicitSpot: false,
-    userGpsLat: 20.9320,
-    userGpsLon: 77.7523,
+    userGpsLat: 20.9374,
+    userGpsLon: 77.7593,
     selectedPreferences: new Set(['history', 'nature']),
     hour: 14, // 2 PM default (Midday peak)
     dayOfWeek: 6, // Sunday (Weekend default)
@@ -334,7 +334,7 @@
   }
 
   /**
-   * Geolocation with Immediate Persistent User Radar Identification & Fallback
+   * Geolocation with Immediate Persistent User Radar Identification & Rajkamal Chowk Fallback
    */
   async function detectUserLocation(notifyUser) {
     if (navigator.geolocation) {
@@ -343,80 +343,63 @@
         function (pos) {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
-          state.userGpsLat = lat;
-          state.userGpsLon = lon;
-          state.currentLat = lat;
-          state.currentLon = lon;
-          state.isExplicitSpot = false;
-          state.currentLocationName = '📍 Your Real-Time Location (GPS)';
-          if (dom.searchInput) dom.searchInput.value = '📍 Your Real-Time Location (GPS)';
           
-          if (window.GeoDivertMap) {
-            window.GeoDivertMap.setUserLocation(lat, lon);
-            window.GeoDivertMap.setCenter(lat, lon, 14.2);
+          // Calculate distance from Amravati center in km
+          const dLat = (lat - 20.9374) * 111.0;
+          const dLon = (lon - 77.7593) * 111.0;
+          const distKm = Math.sqrt(dLat * dLat + dLon * dLon);
+
+          // If GPS reports user is in/near Amravati (< 60km), use device GPS
+          if (distKm <= 60.0) {
+            state.userGpsLat = lat;
+            state.userGpsLon = lon;
+            state.currentLat = lat;
+            state.currentLon = lon;
+            state.isExplicitSpot = false;
+            state.currentLocationName = '📍 Your Live GPS Location';
+            if (dom.searchInput) dom.searchInput.value = '📍 Your Live GPS Location';
+            
+            if (window.GeoDivertMap) {
+              window.GeoDivertMap.setUserLocation(lat, lon);
+              window.GeoDivertMap.setCenter(lat, lon, 14.2);
+            }
+            showToast(`📍 Live GPS locked: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
+            runDispersalPipeline(lat, lon, 'Your Live GPS Location');
+          } else {
+            // Outside Amravati or ISP routing: Fallback to Rajkamal Chowk
+            useDefaultAmravatiLocation(notifyUser);
           }
-          showToast(`📍 User location identified: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
-          runDispersalPipeline(lat, lon, 'Your Real-Time Location (GPS)');
         },
-        async function (err) {
-          console.log('GPS info notice:', err.message);
-          await fetchIpGeolocation(notifyUser);
+        function (err) {
+          console.log('GPS notice (using Rajkamal Chowk fallback):', err.message);
+          useDefaultAmravatiLocation(notifyUser);
         },
-        { timeout: 7000, enableHighAccuracy: false, maximumAge: 60000 }
+        { timeout: 5000, enableHighAccuracy: false, maximumAge: 60000 }
       );
     } else {
-      await fetchIpGeolocation(notifyUser);
+      useDefaultAmravatiLocation(notifyUser);
     }
-  }
-
-  async function fetchIpGeolocation(notifyUser) {
-    try {
-      const res = await fetch('https://ipapi.co/json/');
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.latitude && data.longitude) {
-          const lat = parseFloat(data.latitude);
-          const lon = parseFloat(data.longitude);
-          const cityName = data.city || 'Local Region';
-          state.userGpsLat = lat;
-          state.userGpsLon = lon;
-          state.currentLat = lat;
-          state.currentLon = lon;
-          state.isExplicitSpot = false;
-          state.currentLocationName = `📍 Your Location (${cityName})`;
-          if (dom.searchInput) dom.searchInput.value = state.currentLocationName;
-          
-          if (window.GeoDivertMap) {
-            window.GeoDivertMap.setUserLocation(lat, lon);
-            window.GeoDivertMap.setCenter(lat, lon, 13.8);
-          }
-          if (notifyUser) showToast(`📍 Location detected: ${cityName} [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
-          runDispersalPipeline(lat, lon, state.currentLocationName);
-          return;
-        }
-      }
-    } catch (e) {
-      console.log('IP Geolocation fallback notice:', e.message);
-    }
-    useDefaultAmravatiLocation(notifyUser);
   }
 
   function useDefaultAmravatiLocation(notifyUser) {
-    // Amravati City Center (Rajkamal Square, NOT Ambadevi Temple)
-    state.userGpsLat = 20.9374;
-    state.userGpsLon = 77.7593;
-    state.currentLat = 20.9374;
-    state.currentLon = 77.7593;
+    // Exact Amravati Starting Point: Rajkamal Chowk (NOT a tourist trap, NOT Pune)
+    const rajkamalLat = 20.9374;
+    const rajkamalLon = 77.7593;
+
+    state.userGpsLat = rajkamalLat;
+    state.userGpsLon = rajkamalLon;
+    state.currentLat = rajkamalLat;
+    state.currentLon = rajkamalLon;
     state.isExplicitSpot = false;
-    state.currentLocationName = '📍 Your Location (Amravati City Center)';
-    if (dom.searchInput) dom.searchInput.value = '📍 Your Location (Amravati City Center)';
+    state.currentLocationName = '📍 Your Location (Rajkamal Chowk, Amravati)';
+    if (dom.searchInput) dom.searchInput.value = '📍 Rajkamal Chowk, Amravati';
     
     if (window.GeoDivertMap) {
-      window.GeoDivertMap.setUserLocation(20.9374, 77.7593);
-      window.GeoDivertMap.setCenter(20.9374, 77.7593, 13.8);
+      window.GeoDivertMap.setUserLocation(rajkamalLat, rajkamalLon);
+      window.GeoDivertMap.setCenter(rajkamalLat, rajkamalLon, 14.0);
     }
-    if (notifyUser) showToast('📍 Centered on your location in Amravati City');
-    runDispersalPipeline(20.9374, 77.7593, 'Your Current Location');
+    if (notifyUser) showToast('📍 Centered on Rajkamal Chowk (Amravati Hub)');
+    runDispersalPipeline(rajkamalLat, rajkamalLon, 'Your Current Location');
   }
 
   function handleSearchSubmit() {

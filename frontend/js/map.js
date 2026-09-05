@@ -16,7 +16,7 @@
   let currentPitch = 70;
   let activeMarkers = [];
   let userLocationMarker = null;
-  let userCoordinates = [77.7523, 20.9320]; // Default Amravati Center [lon, lat]
+  let userCoordinates = [77.7593, 20.9374]; // Default Rajkamal Chowk, Amravati [lon, lat]
   let heatmapVisible = true;
 
   function initMap(containerId, initialCenter) {

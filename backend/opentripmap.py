@@ -142,7 +142,9 @@ AMRAVATI_VERIFIED_TOURIST_DESTINATIONS = [
 
 # Quick local geocoding lookups
 KNOWN_GEOCODES = {
-    "amravati": {"lat": 20.9320, "lon": 77.7523, "display_name": "Amravati, Maharashtra"},
+    "rajkamal": {"lat": 20.9374, "lon": 77.7593, "display_name": "Rajkamal Chowk, Amravati"},
+    "rajkamal chowk": {"lat": 20.9374, "lon": 77.7593, "display_name": "Rajkamal Chowk, Amravati"},
+    "amravati": {"lat": 20.9374, "lon": 77.7593, "display_name": "Rajkamal Chowk, Amravati"},
     "ambadevi": {"lat": 20.9320, "lon": 77.7523, "display_name": "Shri Ambadevi Temple, Amravati"},
     "shri ambadevi & ekvira mandir": {"lat": 20.9320, "lon": 77.7523, "display_name": "Shri Ambadevi Temple, Amravati"},
     "wadali": {"lat": 20.9580, "lon": 77.7845, "display_name": "Wadali Talao, Amravati"},

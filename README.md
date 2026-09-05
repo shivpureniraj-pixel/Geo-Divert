@@ -10,10 +10,21 @@ To keep our development fast, safe, and free of chaotic merge conflicts (especia
 
 ```text
 Geo-Divert/
-├── frontend/    # Frontend UI code
-├── backend/     # Backend server / API code
-└── README.md    # Developer guide & instructions
+├── frontend/                  # Frontend UI code (React.js + MapLibre)
+├── backend/                   # Backend server / API code (FastAPI)
+│   ├── model.pkl              # Trained DecisionTreeRegressor model
+│   ├── nagpur_crowd_data.csv  # Synthetic Nagpur crowd dataset
+│   ├── train_model.py         # Script to train & save DecisionTreeRegressor
+│   └── predict.py             # Inference helper for FastAPI backend
+├── ML_GUIDE_FOR_BEGINNERS.md  # 🤖 Beginner-friendly guide on how our ML crowd prediction works
+└── README.md                  # Developer guide & team workflow
 ```
+
+---
+
+## 🤖 Machine Learning Crowd Prediction
+We built a synthetic **DecisionTreeRegressor** model to predict crowd density scores (0–100) for Nagpur locations based on hour of day and day of week.
+- For a complete beginner-friendly explanation of how the ML model works, read [ML_GUIDE_FOR_BEGINNERS.md](file:///c:/Users/user/Desktop/Geodivert/ML_GUIDE_FOR_BEGINNERS.md).
 
 ---
 

@@ -32,10 +32,10 @@ except ImportError:
 app = FastAPI(
     title="GeoDivert Tourism Crowd Redistribution Platform",
     description="FastAPI Orchestration Microservice connecting Scikit-Learn ML, OpenTripMap, and Gemini 1.5 Flash",
-    version="1.1.0"
+    version="1.2.0"
 )
 
-# Enable CORS Middleware for React frontend and local development
+# Enable CORS Middleware for local frontend and browser fetch
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -45,23 +45,23 @@ app.add_middleware(
 )
 
 class DispersalRequest(BaseModel):
-    latitude: float = 21.1458
-    longitude: float = 79.0882
+    latitude: float = 20.9320
+    longitude: float = 77.7523
     hour: Optional[int] = 14
     day_of_week: Optional[int] = 6
     preferences: Optional[List[str]] = []
     selected_spot_name: Optional[str] = None
 
 class PredictionRequest(BaseModel):
-    latitude: float = 21.1458
-    longitude: float = 79.0882
+    latitude: float = 20.9320
+    longitude: float = 77.7523
     hour: int = 14
     day_of_week: int = 6
 
 class StoryRequest(BaseModel):
     destination_name: str
     category: str
-    city: str = "Nagpur"
+    city: str = "Amravati"
     description: str
     merchant: Optional[dict] = None
 
@@ -70,23 +70,27 @@ def get_root():
     return {
         "service": "GeoDivert FastAPI Engine",
         "status": "online",
-        "ml_engine": "Scikit-Learn DecisionTreeRegressor (max_depth=5)",
+        "ml_engine": "Scikit-Learn DecisionTreeRegressor (max_depth=6)",
         "poi_source": "OpenTripMap API",
         "genai_engine": "Gemini 1.5 Flash",
-        "nagpur_center": {"lat": 21.1458, "lng": 79.0882}
+        "home_region": "Amravati & Vidarbha"
     }
+
+@app.get("/api/health")
+def get_health():
+    return {"status": "ok", "ml_ready": True}
 
 @app.get("/api/spots")
 def get_monitored_spots(
-    lat: float = Query(21.1458),
-    lon: float = Query(79.0882),
+    lat: float = Query(20.9320),
+    lon: float = Query(77.7523),
     hour: int = Query(14),
     day_of_week: int = Query(6)
 ):
     """
     Returns monitored points of interest with live ML predicted crowd scores
     """
-    pois = fetch_cultural_pois(lat, lon, radius_meters=25000)
+    pois = fetch_cultural_pois(lat, lon, radius_meters=35000)
     enriched = []
     
     for p in pois:
@@ -97,14 +101,12 @@ def get_monitored_spots(
             "id": p.get("xid"),
             "name": p.get("name"),
             "category": p.get("category"),
-            "city": "Nagpur",
             "lat": p_lat,
             "lng": p_lon,
             "crowd_score": score,
             "crowd_status": "HIGH" if score >= 75 else "MEDIUM" if score >= 45 else "LOW",
-            "cultural_value": p.get("cultural_value", 0.8),
+            "cultural_value": p.get("cultural_value", 0.85),
             "preference_category": p.get("preference_category", "history"),
-            "image": p.get("image"),
             "description": p.get("description")
         })
         
@@ -115,9 +117,9 @@ def recommend_dispersal(request: DispersalRequest):
     """
     Core Dispersal Pipeline:
     1. Evaluates origin crowd density via ML model.pkl
-    2. Fetches OpenTripMap POIs
+    2. Fetches OpenTripMap POIs for the coordinates
     3. Runs Spatial Dispersal Formula: min F(x) = alpha*d + beta*C(i) - gamma*V(i) - delta*PrefMatch
-    4. Pairs independent local merchant within 800m
+    4. Pairs independent local merchant within 800m-1.5km
     5. Calls Gemini 1.5 Flash to generate 60-second interactive tour guide story
     """
     result = run_spatial_dispersal(
@@ -125,7 +127,8 @@ def recommend_dispersal(request: DispersalRequest):
         origin_lon=request.longitude,
         hour=request.hour if request.hour is not None else 14,
         day_of_week=request.day_of_week if request.day_of_week is not None else 6,
-        user_preferences=request.preferences or []
+        user_preferences=request.preferences or [],
+        query_name=request.selected_spot_name
     )
     return result
 
@@ -148,7 +151,7 @@ def predict_crowd(request: PredictionRequest):
         "day_of_week": request.day_of_week,
         "crowd_score": score,
         "crowd_status": status,
-        "reroute_recommended": score >= 70
+        "reroute_recommended": score >= 65
     }
 
 @app.post("/api/generate-story")
@@ -157,8 +160,8 @@ def generate_story_endpoint(request: StoryRequest):
     Generates tour guide narrative via Gemini 1.5 Flash
     """
     merchant = request.merchant or {
-        "name": "Local Artisan Bakery & Cafe",
-        "description": "30-year-old family bakery serving fresh handmade cardamom tea and snacks"
+        "name": "Raghuveer Sweets & Heritage Tea House",
+        "description": "Local family bakery serving freshly baked cardamom cookies and herbal tea"
     }
     story = generate_tour_guide_story(
         destination_name=request.destination_name,

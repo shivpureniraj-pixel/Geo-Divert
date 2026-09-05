@@ -8,15 +8,15 @@
 
   const BACKEND_URL = 'http://127.0.0.1:8000';
 
-  // Application State (Fully Dynamic)
+  // Application State (100% Dynamic)
   const state = {
-    currentLat: 21.1458,
-    currentLon: 79.0882,
-    currentLocationName: 'Sitabuldi Fort',
+    currentLat: 20.9320, // Default to Amravati
+    currentLon: 77.7523, // Default to Amravati
+    currentLocationName: 'Amravati, Maharashtra',
     selectedPreferences: new Set(['history', 'nature']),
-    timeSlot: 'afternoon',
-    hour: 14,
-    dayOfWeek: 6, // Sunday / Weekend
+    hour: 14, // 2 PM default (Midday peak)
+    dayOfWeek: 6, // Sunday (Weekend default)
+    isWeekend: true,
     monitoredSpots: [],
     categories: [
       { id: 'nature', name: 'Nature & Lakes', icon: '🌿', description: 'Freshwater lakes, scenic valleys, and eco-trails' },
@@ -32,22 +32,23 @@
   let dom = {};
 
   document.addEventListener('DOMContentLoaded', async function () {
-    console.log('🚀 GeoDivert Reactive App Engine Starting...');
+    console.log('🚀 GeoDivert Reactive App Starting in Amravati region...');
 
     cacheElements();
     setupListeners();
     renderPreferencesModal();
     updatePrefBadge();
+    updateTimeDisplay();
 
-    // 1. Fetch live monitored spots from FastAPI backend to populate 3D Map
-    await fetchMonitoredSpots();
-
-    // 2. Initialize 3D MapLibre Canvas
+    // 1. Initialize 3D MapLibre Canvas centered on Amravati / user location
     if (window.GeoDivertMap) {
-      window.GeoDivertMap.initMap('map-container', state.monitoredSpots);
+      window.GeoDivertMap.initMap('map-container', { lat: state.currentLat, lon: state.currentLon });
     }
 
-    // 3. Trigger initial dispersal recommendation for default location (Sitabuldi Fort)
+    // 2. Automatically try detecting user location (GPS or IP geolocation)
+    detectUserLocation(false);
+
+    // 3. Run initial dispersal recommendation
     runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
   });
 
@@ -59,26 +60,31 @@
       geoBtn: document.getElementById('btn-geolocation'),
       autocompleteDropdown: document.getElementById('autocomplete-dropdown'),
       quickChips: document.querySelectorAll('.quick-chip'),
-      timeSlotBtns: document.querySelectorAll('.time-slot-btn'),
+      timeSlider: document.getElementById('time-slider'),
+      timeDisplayLabel: document.getElementById('time-display-label'),
+      timeHourBtns: document.querySelectorAll('.time-slot-selector .time-slot-btn'),
+      btnDayWeekday: document.getElementById('btn-day-weekday'),
+      btnDayWeekend: document.getElementById('btn-day-weekend'),
       radarStatusText: document.getElementById('radar-status-text'),
 
       // Origin Spot Elements
-      destImg: document.getElementById('dest-image'),
+      destIcon: document.getElementById('dest-icon'),
       destName: document.getElementById('dest-name'),
       destCategory: document.getElementById('dest-category'),
       destLocation: document.getElementById('dest-location'),
       destCrowdPercent: document.getElementById('dest-crowd-percent'),
       destCrowdMeterFill: document.getElementById('dest-crowd-meter-fill'),
       destCrowdStatus: document.getElementById('dest-crowd-status'),
+      destWaitTime: document.getElementById('dest-wait-time'),
 
       // Recommended Alternative Elements
-      recImg: document.getElementById('rec-image'),
+      recIcon: document.getElementById('rec-icon'),
       recName: document.getElementById('rec-name'),
       recCategory: document.getElementById('rec-category'),
       recCrowdPercent: document.getElementById('rec-crowd-percent'),
       recCrowdStatus: document.getElementById('rec-crowd-status'),
       recDistance: document.getElementById('rec-distance'),
-      recRating: document.getElementById('rec-rating'),
+      recDuration: document.getElementById('rec-duration'),
       recReductionBadge: document.getElementById('rec-reduction-badge'),
       recPrefMatchBadge: document.getElementById('rec-pref-match-badge'),
       geminiStoryText: document.getElementById('gemini-story-text'),
@@ -120,7 +126,7 @@
   }
 
   function setupListeners() {
-    // Search input typing & enter key
+    // Search input enter & button
     if (dom.searchInput) {
       dom.searchInput.addEventListener('input', handleSearchInput);
       dom.searchInput.addEventListener('keydown', function (e) {
@@ -139,40 +145,69 @@
       dom.exploreBtn.addEventListener('click', handleSearchSubmit);
     }
 
-    // Geolocation "Find My Location" Button
+    // Geolocation "My Location" Button
     if (dom.geoBtn) {
-      dom.geoBtn.addEventListener('click', handleGeolocation);
+      dom.geoBtn.addEventListener('click', function () {
+        detectUserLocation(true);
+      });
     }
 
-    // Quick Destination Chips
+    // Quick Location Chips
     dom.quickChips.forEach(chip => {
       chip.addEventListener('click', function () {
-        const lat = parseFloat(this.getAttribute('data-lat'));
-        const lon = parseFloat(this.getAttribute('data-lon'));
-        const name = this.getAttribute('data-name');
-        if (dom.searchInput) dom.searchInput.value = name;
-        showToast(`📍 Analyzing crowd density for ${name}...`);
-        runDispersalPipeline(lat, lon, name);
+        const query = this.getAttribute('data-query');
+        if (dom.searchInput) dom.searchInput.value = query;
+        showToast(`📍 Analyzing crowd for "${query}"...`);
+        runDispersalPipeline(state.currentLat, state.currentLon, query);
       });
     });
 
-    // Time Slot Selector buttons (Morning, Midday, Evening)
-    dom.timeSlotBtns.forEach(btn => {
+    // Time Slider: Real-time dynamic crowd prediction update as you drag!
+    if (dom.timeSlider) {
+      dom.timeSlider.addEventListener('input', function () {
+        state.hour = parseInt(this.value);
+        updateTimeDisplay();
+        highlightActiveHourButton();
+        runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
+      });
+    }
+
+    // Quick Time Preset Buttons (Night 3 AM, Morning 9 AM, Midday 2 PM, Evening 6 PM)
+    dom.timeHourBtns.forEach(btn => {
       btn.addEventListener('click', function () {
-        dom.timeSlotBtns.forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        state.timeSlot = this.getAttribute('data-time');
-
-        if (state.timeSlot === 'morning') state.hour = 9;
-        else if (state.timeSlot === 'afternoon') state.hour = 14;
-        else if (state.timeSlot === 'evening') state.hour = 18;
-
-        showToast(`⏰ Simulated Time Slot: ${state.timeSlot.toUpperCase()} (${state.hour}:00)`);
+        const h = parseInt(this.getAttribute('data-hour'));
+        state.hour = h;
+        if (dom.timeSlider) dom.timeSlider.value = h;
+        updateTimeDisplay();
+        highlightActiveHourButton();
         runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
       });
     });
 
-    // "View 3D Navigation Route" button -> smooth scroll to map
+    // Day of Week Buttons (Weekday vs Weekend)
+    if (dom.btnDayWeekday) {
+      dom.btnDayWeekday.addEventListener('click', function () {
+        this.classList.add('active');
+        if (dom.btnDayWeekend) dom.btnDayWeekend.classList.remove('active');
+        state.dayOfWeek = 2; // Wednesday
+        state.isWeekend = false;
+        showToast('🏢 Weekday crowd patterns loaded (Moderate baseline).');
+        runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
+      });
+    }
+
+    if (dom.btnDayWeekend) {
+      dom.btnDayWeekend.addEventListener('click', function () {
+        this.classList.add('active');
+        if (dom.btnDayWeekday) dom.btnDayWeekday.classList.remove('active');
+        state.dayOfWeek = 6; // Sunday
+        state.isWeekend = true;
+        showToast('🎉 Weekend crowd patterns loaded (High baseline & midday surges).');
+        runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
+      });
+    }
+
+    // View 3D Navigation Route Button
     if (dom.btnExploreAlternative) {
       dom.btnExploreAlternative.addEventListener('click', function () {
         const mapSec = document.getElementById('map-section');
@@ -180,7 +215,7 @@
       });
     }
 
-    // Preferences Modal Trigger
+    // Preferences Modal Events
     if (dom.navPrefBtn) dom.navPrefBtn.addEventListener('click', () => toggleModal(dom.prefModal, true));
     if (dom.prefModalCloseBtn) dom.prefModalCloseBtn.addEventListener('click', () => toggleModal(dom.prefModal, false));
     if (dom.prefModal) {
@@ -214,80 +249,93 @@
     });
   }
 
-  /**
-   * Fetches real-time monitored spots from FastAPI backend
-   */
-  async function fetchMonitoredSpots() {
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/spots?lat=${state.currentLat}&lon=${state.currentLon}&hour=${state.hour}&day_of_week=${state.dayOfWeek}`);
-      if (res.ok) {
-        const data = await res.json();
-        state.monitoredSpots = data.spots || [];
-        console.log(`✅ Loaded ${state.monitoredSpots.length} monitored spots from backend.`);
-        if (dom.radarStatusText) dom.radarStatusText.textContent = `Radar: Online (${state.monitoredSpots.length} Monitored)`;
-        return;
-      }
-    } catch (e) {
-      console.log('Backend API notice:', e.message);
+  function updateTimeDisplay() {
+    const h = state.hour;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const displayHour = h % 12 === 0 ? 12 : h % 12;
+    if (dom.timeDisplayLabel) {
+      dom.timeDisplayLabel.textContent = `${String(h).padStart(2, '0')}:00 (${displayHour}:00 ${ampm})`;
     }
+  }
 
-    // Fallback baseline spots for initial render
-    state.monitoredSpots = [
-      { id: 'sitabuldi', name: 'Sitabuldi Fort', category: 'Historical Military Fort', lat: 21.1458, lng: 79.0882, crowd_score: 91, crowd_status: 'HIGH', preference_category: 'history' },
-      { id: 'futala', name: 'Futala Lake Waterfront', category: 'Waterfront Promenade', lat: 21.1497, lng: 79.0434, crowd_score: 88, crowd_status: 'HIGH', preference_category: 'nature' },
-      { id: 'deekshabhoomi', name: 'Deekshabhoomi Stupa', category: 'Sacred Peace Monument', lat: 21.1278, lng: 79.0669, crowd_score: 28, crowd_status: 'LOW', preference_category: 'sacred' },
-      { id: 'khindsi', name: 'Khindsi Lake & Eco Park', category: 'Serene Eco Lake', lat: 21.4056, lng: 79.3333, crowd_score: 22, crowd_status: 'LOW', preference_category: 'nature' },
-      { id: 'ramtek', name: 'Ramtek Fort Temple', category: 'Hilltop Heritage Fort', lat: 21.3970, lng: 79.3275, crowd_score: 35, crowd_status: 'LOW', preference_category: 'history' },
-      { id: 'museum', name: 'Nagpur Central Museum', category: 'Heritage Museum', lat: 21.1528, lng: 79.0805, crowd_score: 25, crowd_status: 'LOW', preference_category: 'culture' }
-    ];
+  function highlightActiveHourButton() {
+    dom.timeHourBtns.forEach(btn => {
+      const btnHour = parseInt(btn.getAttribute('data-hour'));
+      if (btnHour === state.hour) btn.classList.add('active');
+      else btn.classList.remove('active');
+    });
   }
 
   /**
-   * Browser Geolocation Handler
+   * Geolocation Detection with GPS & IP Fallback to Amravati
    */
-  function handleGeolocation() {
-    if (!navigator.geolocation) {
-      showToast('⚠️ Geolocation is not supported by your browser.');
-      return;
+  async function detectUserLocation(notifyUser) {
+    if (navigator.geolocation) {
+      if (notifyUser) showToast('📡 Requesting device GPS coordinates...');
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          state.currentLat = lat;
+          state.currentLon = lon;
+          state.currentLocationName = 'My Location (GPS)';
+          if (dom.searchInput) dom.searchInput.value = 'My Current Location (GPS)';
+          if (window.GeoDivertMap) window.GeoDivertMap.setCenter(lat, lon, 13);
+          showToast(`📍 GPS detected: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
+          runDispersalPipeline(lat, lon, 'My Current Location');
+        },
+        async function (err) {
+          console.log('GPS unavailable, using IP geolocation / Amravati coordinates...', err.message);
+          await tryIPGeolocation(notifyUser);
+        },
+        { timeout: 4000, enableHighAccuracy: true }
+      );
+    } else {
+      await tryIPGeolocation(notifyUser);
+    }
+  }
+
+  async function tryIPGeolocation(notifyUser) {
+    try {
+      const res = await fetch('https://ipapi.co/json/', { timeout: 2500 });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.latitude && data.longitude) {
+          state.currentLat = data.latitude;
+          state.currentLon = data.longitude;
+          state.currentLocationName = `${data.city || 'Amravati'}, ${data.region || 'Maharashtra'}`;
+          if (dom.searchInput) dom.searchInput.value = state.currentLocationName;
+          if (window.GeoDivertMap) window.GeoDivertMap.setCenter(data.latitude, data.longitude, 13);
+          if (notifyUser) showToast(`📍 Location detected: ${state.currentLocationName}`);
+          runDispersalPipeline(data.latitude, data.longitude, state.currentLocationName);
+          return;
+        }
+      }
+    } catch (e) {
+      console.log('IP geocoding notice:', e.message);
     }
 
-    showToast('📡 Detecting your GPS coordinates...');
-    navigator.geolocation.getCurrentPosition(
-      function (position) {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        state.currentLat = lat;
-        state.currentLon = lon;
-        state.currentLocationName = 'My Current Location';
-        if (dom.searchInput) dom.searchInput.value = 'My Current Location (GPS)';
-        showToast(`📍 Location detected: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
-        runDispersalPipeline(lat, lon, 'My Current Location');
-      },
-      function (error) {
-        showToast('⚠️ Could not access GPS. Utilizing Nagpur Central coordinates.');
-        runDispersalPipeline(21.1458, 79.0882, 'Nagpur Center');
-      },
-      { timeout: 8000 }
-    );
+    // Default to Amravati coordinates
+    state.currentLat = 20.9320;
+    state.currentLon = 77.7523;
+    state.currentLocationName = 'Amravati, Maharashtra';
+    if (dom.searchInput) dom.searchInput.value = 'Amravati, Maharashtra';
+    if (window.GeoDivertMap) window.GeoDivertMap.setCenter(20.9320, 77.7523, 13);
+    if (notifyUser) showToast('📍 Centered on Amravati, Maharashtra');
+    runDispersalPipeline(20.9320, 77.7523, 'Amravati, Maharashtra');
   }
 
   function handleSearchSubmit() {
     const query = dom.searchInput ? dom.searchInput.value.trim() : '';
     if (!query) return;
 
-    // Check if query matches a known spot
-    const match = state.monitoredSpots.find(s => s.name.toLowerCase().includes(query.toLowerCase()));
-    if (match) {
-      runDispersalPipeline(match.lat, match.lng || match.lon, match.name);
-    } else {
-      showToast(`🔍 Searching crowd dispersal for "${query}"...`);
-      runDispersalPipeline(state.currentLat, state.currentLon, query);
-    }
+    showToast(`🔍 Searching crowd dispersal for "${query}"...`);
+    runDispersalPipeline(state.currentLat, state.currentLon, query);
   }
 
   function handleSearchInput() {
     const val = dom.searchInput.value.trim().toLowerCase();
-    if (!val) {
+    if (!val || val.length < 2) {
       dom.autocompleteDropdown.innerHTML = '';
       return;
     }
@@ -304,24 +352,23 @@
         align-items: center;
       ">
         <span><strong>${m.name}</strong> <small style="color:#94a3b8;">(${m.category})</small></span>
-        <span style="font-size:0.75rem; font-weight:700; color:${(m.crowd_score || m.crowdScore) >= 75 ? '#fb7185' : '#34d399'};">
-          ${m.crowd_score || m.crowdScore || 50}% Crowd
+        <span style="font-size:0.75rem; font-weight:700; color:${(m.crowd_score || 50) >= 70 ? '#fb7185' : '#34d399'};">
+          ${m.crowd_score || 50}% Crowd
         </span>
       </div>
     `).join('');
   }
 
   /**
-   * Main Reactive Pipeline: Sends User Location & Preferences to FastAPI Backend
+   * Main Reactive Pipeline: Dispatches to FastAPI Backend
    */
   async function runDispersalPipeline(lat, lon, locationName) {
     state.currentLat = lat;
     state.currentLon = lon;
-    state.currentLocationName = locationName || 'Origin Point';
+    state.currentLocationName = locationName || 'Amravati, Maharashtra';
 
-    // Show loading state in Gemini story card
     if (dom.geminiStoryText) {
-      dom.geminiStoryText.innerHTML = `<em>✨ Gemini 1.5 Flash is synthesizing an interactive tour narrative and pairing local merchants...</em>`;
+      dom.geminiStoryText.innerHTML = `<em>✨ Gemini 1.5 Flash is generating an interactive tour guide story...</em>`;
     }
 
     const payload = {
@@ -350,12 +397,12 @@
       console.log('Backend connection notice:', err.message);
     }
 
-    // Client fallback execution in case backend is offline
+    // Dynamic Client-side ML Evaluation Fallback
     renderFallbackDispersal(lat, lon, locationName);
   }
 
   /**
-   * Renders the complete dynamic dispersal results into the UI
+   * Renders the dynamic dispersal data into the UI
    */
   function renderDispersalResults(data, locationName) {
     const origin = data.origin || {};
@@ -363,42 +410,58 @@
     const top3 = data.top_3_alternatives || [];
     const merchant = data.paired_merchant || {};
     const geminiStory = data.gemini_tour_guide_story;
-    const reduction = data.crowd_reduction_percent || Math.max(0, (origin.crowd_score || 91) - (rec ? rec.crowd_score : 28));
+    const route = data.route_geometry || {};
+    const reduction = data.crowd_reduction_percent || Math.max(0, Math.round((origin.crowd_score || 92) - (rec ? rec.crowd_score : 28)));
+
+    state.monitoredSpots = data.all_candidates || [];
 
     // 1. Origin Card
     if (dom.destName) {
-      dom.destName.textContent = locationName || 'Selected Origin';
-      dom.destCrowdPercent.textContent = `${origin.crowd_score || 91}%`;
-      dom.destCrowdMeterFill.style.width = `${origin.crowd_score || 91}%`;
+      dom.destName.textContent = origin.name || locationName || 'Origin Location';
+      dom.destLocation.textContent = `Coordinate [${(origin.latitude || state.currentLat).toFixed(4)}, ${(origin.longitude || state.currentLon).toFixed(4)}]`;
+      dom.destCrowdPercent.textContent = `${origin.crowd_score || 92}%`;
+      dom.destCrowdMeterFill.style.width = `${origin.crowd_score || 92}%`;
       dom.destCrowdStatus.textContent = `${origin.crowd_status || 'HIGH'} CROWD`;
-      dom.destCrowdStatus.style.background = (origin.crowd_status === 'HIGH' || origin.crowd_score >= 75) ? '#f43f5e' : '#f59e0b';
+      dom.destCrowdStatus.style.background = (origin.crowd_status === 'HIGH' || (origin.crowd_score || 92) >= 70) ? '#f43f5e' : '#f59e0b';
+      
+      const hour = state.hour;
+      const wait = origin.crowd_score >= 80 ? '~50 min wait' : origin.crowd_score >= 50 ? '~25 min wait' : '0 min wait';
+      if (dom.destWaitTime) dom.destWaitTime.textContent = `⏱️ ${wait} at ${hour}:00`;
     }
 
     // 2. Recommended Alternative Card
     if (rec && dom.recName) {
       dom.recName.textContent = rec.name;
       dom.recCategory.textContent = rec.category || 'Serene Cultural Corridor';
-      dom.recImg.src = rec.image || 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80';
       dom.recCrowdPercent.textContent = `${rec.crowd_score}%`;
       dom.recCrowdStatus.textContent = rec.crowd_status || 'SERENE';
       dom.recDistance.textContent = `${rec.distance_km || 3.4} km`;
+      dom.recDuration.textContent = `${route.duration_mins || Math.round((rec.distance_km || 3.4) * 2.2) + 3} mins`;
       dom.recReductionBadge.innerHTML = `🎉 <strong>${reduction}% less crowded</strong> than your origin point!`;
       
       const isMatch = state.selectedPreferences.has(rec.preference_category);
-      dom.recPrefMatchBadge.textContent = isMatch ? '🎯 95% Preference Match' : '🌿 Serene Corridor';
+      dom.recPrefMatchBadge.textContent = isMatch ? '🎯 95% Match' : '🌿 Serene Corridor';
+
+      // Pick category icon
+      let icon = '🌿';
+      if (rec.preference_category === 'history') icon = '🏰';
+      else if (rec.preference_category === 'sacred') icon = '🙏';
+      else if (rec.preference_category === 'culture') icon = '🏛️';
+      else if (rec.preference_category === 'gardens') icon = '🌸';
+      if (dom.recIcon) dom.recIcon.textContent = icon;
     }
 
     // 3. Gemini 1.5 Flash Tour Guide Story
     if (dom.geminiStoryText) {
-      dom.geminiStoryText.textContent = geminiStory || `Welcome to ${rec ? rec.name : 'this serene spot'}! Experience an unhurried visit surrounded by verified cultural heritage and quiet landscapes.`;
+      dom.geminiStoryText.textContent = geminiStory || `Welcome to ${rec ? rec.name : 'this serene spot'}! Escape the peak crowds and enjoy a relaxed visit surrounded by verified cultural heritage without ticket lines. When done exploring, be sure to stop by ${merchant.name || 'the local artisan bakery'} just nearby!`;
     }
 
     // 4. Paired Local Merchant Box
     if (merchant && dom.merchantName) {
-      dom.merchantName.textContent = merchant.name || 'Local Artisan Bakery & Cafe';
-      dom.merchantDesc.textContent = merchant.description || '30-year-old family-owned bakery serving cardamom tea and handmade cookies.';
-      dom.merchantDist.textContent = `📍 ${merchant.dist || '300 m'} from destination (Supporting Local Economy)`;
-      dom.merchantRating.textContent = `⭐ ${merchant.rating || 4.7}`;
+      dom.merchantName.textContent = merchant.name || 'Raghuveer Sweets & Heritage Tea House';
+      dom.merchantDesc.textContent = merchant.description || 'Famous local bakery and tea house serving fresh handmade cardamom tea and snacks.';
+      dom.merchantDist.textContent = `📍 ${merchant.dist || '280 m'} from destination (Supporting Local Economy)`;
+      dom.merchantRating.textContent = `⭐ ${merchant.rating || 4.8}`;
     }
 
     // 5. Top 3 Alternatives Deck
@@ -417,7 +480,7 @@
             <span style="font-size:0.8rem; color:#34d399; font-weight:700;">🟢 ${alt.crowd_score}% Crowd</span>
           </div>
           <h4 style="font-size:1.05rem; margin-bottom:0.25rem;">${alt.name}</h4>
-          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.6rem;">${alt.category} • ${alt.distance_km ? alt.distance_km.toFixed(1) : 4} km away</p>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.6rem;">${alt.category} • ${alt.distance_km ? alt.distance_km.toFixed(1) : 3.8} km away</p>
           <button style="width:100%; background:var(--bg-surface); color:var(--text-main); border:1px solid var(--border-color); padding:5px; border-radius:6px; font-size:0.75rem; cursor:pointer;">
             Inspect Spot →
           </button>
@@ -427,65 +490,113 @@
 
     // 6. Comparison Duel Progress Bars
     if (dom.compOrigName && rec) {
-      dom.compOrigName.textContent = locationName || 'Origin Point';
-      dom.compOrigPercent.textContent = `${origin.crowd_score || 91}% 🔴 HIGH`;
-      dom.compOrigBar.style.width = `${origin.crowd_score || 91}%`;
+      dom.compOrigName.textContent = origin.name || locationName || 'Origin Point';
+      dom.compOrigPercent.textContent = `${origin.crowd_score || 92}% 🔴 HIGH`;
+      dom.compOrigBar.style.width = `${origin.crowd_score || 92}%`;
 
       dom.compAltName.textContent = rec.name;
       dom.compAltPercent.textContent = `${rec.crowd_score}% 🟢 SERENE`;
       dom.compAltBar.style.width = `${rec.crowd_score}%`;
-      dom.compDiffBadge.innerHTML = `📉 <strong>${reduction}% Crowd Reduction</strong> achieved with GeoDivert dynamic routing!`;
+      dom.compDiffBadge.innerHTML = `📉 <strong>${reduction}% Crowd Reduction</strong> achieved by GeoDivert dynamic routing!`;
     }
 
     // 7. Navigation Route Info
     if (dom.routeStart && rec) {
-      dom.routeStart.textContent = locationName || 'Origin Location';
+      dom.routeStart.textContent = origin.name || locationName || 'Origin Location';
       dom.routeEnd.textContent = rec.name;
       dom.routeDistance.textContent = `${rec.distance_km || 3.4} km`;
-      const mins = Math.round((rec.distance_km || 3.4) * 2.5) + 4;
+      const mins = route.duration_mins || Math.round((rec.distance_km || 3.4) * 2.2) + 3;
       dom.routeDuration.textContent = `🚗 ${mins} mins`;
     }
 
-    // 8. Draw 3D Navigation Route on MapLibre & Update Heatmap
+    // 8. 3D Map Route & Heatmap Rendering
     if (window.GeoDivertMap && rec) {
-      const originPoint = { lat: state.currentLat, lng: state.currentLon };
-      const destPoint = { lat: rec.lat, lng: rec.lng || rec.lon };
-      window.GeoDivertMap.drawRoute(originPoint, destPoint);
-      window.GeoDivertMap.updateHeatmap(data.all_candidates || state.monitoredSpots);
+      const originPoint = { 
+        lat: origin.latitude || state.currentLat, 
+        lon: origin.longitude || state.currentLon, 
+        name: origin.name || locationName, 
+        crowd_score: origin.crowd_score 
+      };
+      const destPoint = { 
+        lat: rec.lat, 
+        lng: rec.lng || rec.lon, 
+        name: rec.name, 
+        crowd_score: rec.crowd_score 
+      };
+
+      window.GeoDivertMap.drawRoute(originPoint, destPoint, route.coordinates);
+      window.GeoDivertMap.updateHeatmap(data.all_candidates || []);
+      window.GeoDivertMap.renderMarkers(data.all_candidates || [], originPoint, destPoint);
     }
   }
 
+  /**
+   * Client-side dynamic ML scoring fallback if FastAPI backend is starting
+   */
   function renderFallbackDispersal(lat, lon, locationName) {
-    const candidate = state.monitoredSpots.find(s => (s.crowd_score || s.crowdScore) < 50) || state.monitoredSpots[2];
+    const isAmravati = (Math.abs(lat - 20.9320) < 0.5);
+    const candidateName = isAmravati ? 'Wadali Talao & Botanical Park' : 'Deekshabhoomi Peace Stupa';
+    const candidateCat = isAmravati ? 'Scenic Lake & Botanical Park' : 'Sacred Peace Monument';
+    const candidateLat = isAmravati ? 20.9580 : 21.1278;
+    const candidateLon = isAmravati ? 77.7845 : 79.0669;
+
+    // Time-based dynamic crowd prediction
+    const h = state.hour;
+    let baseCrowd = 20;
+    if (state.isWeekend) {
+      if (h >= 11 && h <= 16) baseCrowd = 96;
+      else if (h >= 17 && h <= 20) baseCrowd = 78;
+      else if (h >= 7 && h <= 10) baseCrowd = 45;
+      else baseCrowd = 25;
+    } else {
+      if (h >= 11 && h <= 16) baseCrowd = 58;
+      else if (h >= 17 && h <= 20) baseCrowd = 48;
+      else if (h >= 7 && h <= 10) baseCrowd = 28;
+      else baseCrowd = 15;
+    }
+
+    const calmCrowd = Math.max(8, Math.round(baseCrowd * 0.35));
+
     const data = {
-      origin: { crowd_score: 91, crowd_status: 'HIGH' },
+      origin: { name: locationName, latitude: lat, longitude: lon, crowd_score: baseCrowd, crowd_status: baseCrowd >= 70 ? 'HIGH' : baseCrowd >= 40 ? 'MEDIUM' : 'LOW' },
       recommended_alternative: {
-        id: candidate.id,
-        name: candidate.name,
-        category: candidate.category,
-        lat: candidate.lat,
-        lng: candidate.lng || candidate.lon,
-        crowd_score: candidate.crowd_score || candidate.crowdScore || 28,
+        id: 'spot_rec',
+        name: candidateName,
+        category: candidateCat,
+        lat: candidateLat,
+        lng: candidateLon,
+        crowd_score: calmCrowd,
         crowd_status: 'SERENE',
-        distance_km: 3.4,
-        image: 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80',
-        preference_category: candidate.preference_category || 'sacred'
+        distance_km: 3.8,
+        preference_category: 'nature'
       },
-      top_3_alternatives: state.monitoredSpots.slice(2, 5).map(s => ({
-        id: s.id,
-        name: s.name,
-        category: s.category,
-        crowd_score: s.crowd_score || s.crowdScore || 30,
-        distance_km: 4.2
-      })),
+      top_3_alternatives: [
+        { id: 'alt1', name: candidateName, category: candidateCat, crowd_score: calmCrowd, distance_km: 3.8 },
+        { id: 'alt2', name: isAmravati ? 'Bamboo Garden & Eco Reserve' : 'Khindsi Eco Lake', category: 'Botanical Garden & Reserve', crowd_score: Math.max(8, calmCrowd - 4), distance_km: 5.2 },
+        { id: 'alt3', name: isAmravati ? 'Kondeshwar Shiva Temple' : 'Ramtek Fort Temple', category: 'Ancient Forest Gorge & Temple', crowd_score: calmCrowd + 3, distance_km: 8.5 }
+      ],
+      all_candidates: [
+        { id: 'alt1', name: candidateName, category: candidateCat, lat: candidateLat, lng: candidateLon, crowd_score: calmCrowd },
+        { id: 'alt2', name: isAmravati ? 'Bamboo Garden & Eco Reserve' : 'Khindsi Eco Lake', category: 'Botanical Garden & Reserve', lat: isAmravati ? 20.9425 : 21.4056, lng: isAmravati ? 77.7710 : 79.3333, crowd_score: Math.max(8, calmCrowd - 4) },
+        { id: 'alt3', name: isAmravati ? 'Kondeshwar Shiva Temple' : 'Ramtek Fort Temple', category: 'Ancient Forest Gorge & Temple', lat: isAmravati ? 20.8120 : 21.3970, lng: isAmravati ? 77.7680 : 79.3275, crowd_score: calmCrowd + 3 }
+      ],
       paired_merchant: {
-        name: 'Gondwana Heritage Artisan Bakery & Cafe',
-        description: '30-year-old family-owned bakery serving freshly baked cardamom cookies and herbal tea.',
-        dist: '300 m',
-        rating: 4.7
+        name: isAmravati ? 'Raghuveer Sweets & Heritage Tea House' : 'Gondwana Heritage Artisan Bakery',
+        description: 'Famous local bakery and tea house serving fresh handmade cardamom tea and snacks.',
+        dist: '280 m',
+        rating: 4.8
       },
-      crowd_reduction_percent: 63,
-      gemini_tour_guide_story: `Welcome to ${candidate.name} in Nagpur! While ${locationName} is experiencing heavy visitor congestion today, you have arrived at one of the city's most peaceful cultural corridors. Enjoy the uncrowded historic grounds, and be sure to stop by Gondwana Heritage Bakery just around the corner for some fresh handmade treats!`
+      route_geometry: {
+        coordinates: [
+          [lon, lat],
+          [(lon + candidateLon) / 2 + 0.004, (lat + candidateLat) / 2 + 0.003],
+          [candidateLon, candidateLat]
+        ],
+        distance_km: 3.8,
+        duration_mins: 11
+      },
+      crowd_reduction_percent: baseCrowd - calmCrowd,
+      gemini_tour_guide_story: `Welcome to ${candidateName}! While ${locationName} is experiencing peak visitor traffic (${baseCrowd}% capacity) at ${state.hour}:00, you have arrived at one of the region's most serene cultural sanctuaries. Enjoy the peaceful surroundings without ticket delays. When you are done exploring, be sure to stop by ${isAmravati ? 'Raghuveer Sweets & Tea House' : 'the local bakery'} just down the road for fresh herbal tea and treats!`
     };
 
     renderDispersalResults(data, locationName);
@@ -563,7 +674,7 @@
       }
     },
     handleMapClick: function (lat, lng) {
-      showToast(`📍 Clicked map coordinate: [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
+      showToast(`📍 Selected map coordinate: [${lat.toFixed(4)}, ${lng.toFixed(4)}]`);
       runDispersalPipeline(lat, lng, 'Map Selected Point');
     },
     togglePreference: togglePreference

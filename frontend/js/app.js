@@ -151,9 +151,10 @@
 
     if (dom.btnRecenter) {
       dom.btnRecenter.addEventListener('click', function () {
+        state.isExplicitSpot = false;
+        detectUserLocation(true);
         if (window.GeoDivertMap) {
           window.GeoDivertMap.recenterOnUser();
-          showToast('🎯 Centered map on your GPS location');
         }
       });
     }
@@ -333,7 +334,7 @@
   }
 
   /**
-   * Geolocation with Immediate Persistent User Radar Identification
+   * Geolocation with Immediate Persistent User Radar Identification & Fallback
    */
   async function detectUserLocation(notifyUser) {
     if (navigator.geolocation) {
@@ -347,42 +348,75 @@
           state.currentLat = lat;
           state.currentLon = lon;
           state.isExplicitSpot = false;
-          state.currentLocationName = '📍 Your Current Location (GPS)';
-          if (dom.searchInput) dom.searchInput.value = '📍 Your Current Location (GPS)';
+          state.currentLocationName = '📍 Your Real-Time Location (GPS)';
+          if (dom.searchInput) dom.searchInput.value = '📍 Your Real-Time Location (GPS)';
+          
+          if (window.GeoDivertMap) {
+            window.GeoDivertMap.setUserLocation(lat, lon);
+            window.GeoDivertMap.setCenter(lat, lon, 14.2);
+          }
+          showToast(`📍 User location identified: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
+          runDispersalPipeline(lat, lon, 'Your Real-Time Location (GPS)');
+        },
+        async function (err) {
+          console.log('GPS info notice:', err.message);
+          await fetchIpGeolocation(notifyUser);
+        },
+        { timeout: 7000, enableHighAccuracy: false, maximumAge: 60000 }
+      );
+    } else {
+      await fetchIpGeolocation(notifyUser);
+    }
+  }
+
+  async function fetchIpGeolocation(notifyUser) {
+    try {
+      const res = await fetch('https://ipapi.co/json/');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.latitude && data.longitude) {
+          const lat = parseFloat(data.latitude);
+          const lon = parseFloat(data.longitude);
+          const cityName = data.city || 'Local Region';
+          state.userGpsLat = lat;
+          state.userGpsLon = lon;
+          state.currentLat = lat;
+          state.currentLon = lon;
+          state.isExplicitSpot = false;
+          state.currentLocationName = `📍 Your Location (${cityName})`;
+          if (dom.searchInput) dom.searchInput.value = state.currentLocationName;
           
           if (window.GeoDivertMap) {
             window.GeoDivertMap.setUserLocation(lat, lon);
             window.GeoDivertMap.setCenter(lat, lon, 13.8);
           }
-          showToast(`📍 User location identified: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
-          runDispersalPipeline(lat, lon, 'Your Current Location');
-        },
-        async function (err) {
-          console.log('GPS info:', err.message);
-          useDefaultAmravatiLocation(notifyUser);
-        },
-        { timeout: 4000, enableHighAccuracy: true }
-      );
-    } else {
-      useDefaultAmravatiLocation(notifyUser);
+          if (notifyUser) showToast(`📍 Location detected: ${cityName} [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
+          runDispersalPipeline(lat, lon, state.currentLocationName);
+          return;
+        }
+      }
+    } catch (e) {
+      console.log('IP Geolocation fallback notice:', e.message);
     }
+    useDefaultAmravatiLocation(notifyUser);
   }
 
   function useDefaultAmravatiLocation(notifyUser) {
-    state.userGpsLat = 20.9320;
-    state.userGpsLon = 77.7523;
-    state.currentLat = 20.9320;
-    state.currentLon = 77.7523;
+    // Amravati City Center (Rajkamal Square, NOT Ambadevi Temple)
+    state.userGpsLat = 20.9374;
+    state.userGpsLon = 77.7593;
+    state.currentLat = 20.9374;
+    state.currentLon = 77.7593;
     state.isExplicitSpot = false;
-    state.currentLocationName = '📍 Your Location (Amravati)';
-    if (dom.searchInput) dom.searchInput.value = '📍 Your Location (Amravati)';
+    state.currentLocationName = '📍 Your Location (Amravati City Center)';
+    if (dom.searchInput) dom.searchInput.value = '📍 Your Location (Amravati City Center)';
     
     if (window.GeoDivertMap) {
-      window.GeoDivertMap.setUserLocation(20.9320, 77.7523);
-      window.GeoDivertMap.setCenter(20.9320, 77.7523, 13.5);
+      window.GeoDivertMap.setUserLocation(20.9374, 77.7593);
+      window.GeoDivertMap.setCenter(20.9374, 77.7593, 13.8);
     }
-    if (notifyUser) showToast('📍 Centered on your location in Amravati');
-    runDispersalPipeline(20.9320, 77.7523, 'Your Current Location');
+    if (notifyUser) showToast('📍 Centered on your location in Amravati City');
+    runDispersalPipeline(20.9374, 77.7593, 'Your Current Location');
   }
 
   function handleSearchSubmit() {

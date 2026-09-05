@@ -53,36 +53,45 @@ STRICT FORMATTING RULES:
 """
 
     if api_key:
-        # Try Google GenAI SDK (v1 / v2)
+        # Try Google GenAI SDK with active available models
         try:
             from google import genai
             client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt
-            )
-            if response and response.text:
-                cleaned = response.text.replace("*", "").replace("#", "").strip()
-                return cleaned
-        except Exception:
-            pass
+            for model_name in ["gemini-flash-lite-latest", "gemini-flash-latest", "gemini-2.5-flash"]:
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=prompt
+                    )
+                    if response and response.text:
+                        cleaned = response.text.replace("*", "").replace("#", "").strip()
+                        print(f"[Gemini Service] Generated narrative with model: {model_name}")
+                        return cleaned
+                except Exception as m_err:
+                    print(f"[Gemini Service] Model {model_name} notice: {str(m_err)[:100]}")
+                    continue
+        except Exception as sdk_err:
+            print(f"[Gemini Service] SDK notice: {str(sdk_err)[:100]}")
 
         # Try direct REST endpoint for Gemini API
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}]
-            }
-            res = requests.post(url, json=payload, timeout=3.5)
-            if res.status_code == 200:
-                data = res.json()
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    if parts and "text" in parts[0]:
-                        cleaned = parts[0]["text"].replace("*", "").replace("#", "").strip()
-                        return cleaned
-        except Exception:
+        for rest_model in ["gemini-flash-lite-latest", "gemini-flash-latest"]:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{rest_model}:generateContent?key={api_key}"
+                payload = {
+                    "contents": [{"parts": [{"text": prompt}]}]
+                }
+                res = requests.post(url, json=payload, timeout=5.0)
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts and "text" in parts[0]:
+                            cleaned = parts[0]["text"].replace("*", "").replace("#", "").strip()
+                            print(f"[Gemini Service] Generated narrative via REST with {rest_model}")
+                            return cleaned
+            except Exception as rest_err:
+                print(f"[Gemini Service] REST notice with {rest_model}: {str(rest_err)[:100]}")
             pass
 
     # High quality dynamic fallback tour guide narrative

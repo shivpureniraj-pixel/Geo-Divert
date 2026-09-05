@@ -35,9 +35,6 @@
     <span class="nbg">Amravati AI</span>
   </a>
   <div class="nav-actions">
-    <button class="sfx-toggle" id="landing-api-key-btn" onclick="openLandingApiModal()" style="margin-right:6px;" title="Configure API Keys for GitHub / Live Services">
-      <span style="font-size:0.85rem;">🔑 API Keys</span>
-    </button>
     <button class="sfx-toggle" id="sfx-btn" onclick="toggleSfx()">
       <span class="sfx-dot"></span>
       <span id="sfx-label">SFX: ON</span>
@@ -535,100 +532,6 @@
   });
   init(); draw();
 })();
-</script>
-
-<!-- API Configuration Modal -->
-<div class="modal-backdrop" id="landing-api-config-modal" role="dialog" aria-modal="true" style="display:none; position:fixed; inset:0; background:rgba(3,7,18,0.85); backdrop-filter:blur(16px); align-items:center; justify-content:center; z-index:99999;">
-  <div style="max-width:540px; width:90%; background:#0b1329; border:1px solid rgba(56,189,248,0.3); border-radius:20px; padding:24px; color:#fff; box-shadow:0 20px 60px rgba(0,0,0,0.85); position:relative;">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
-      <div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:1.3rem;">🔑</span>
-          <h2 style="font-family:'Outfit',sans-serif; font-weight:800; font-size:1.35rem; color:#fff; margin:0;">API Key Settings</h2>
-        </div>
-        <p style="font-size:0.82rem; color:#94a3b8; margin-top:4px;">Configure your keys for Gemini 1.5/2.5, MapTiler 3D, and OpenTripMap before deploying to GitHub.</p>
-      </div>
-      <button type="button" onclick="closeLandingApiModal()" style="background:none; border:none; color:#94a3b8; font-size:1.4rem; cursor:pointer;">✕</button>
-    </div>
-
-    <div style="display:flex; flex-direction:column; gap:16px;">
-      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 14px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <label style="font-size:0.85rem; font-weight:700; color:#38bdf8;">Gemini 1.5 / 2.5 Flash API Key</label>
-          <span id="l-badge-gemini" style="font-size:0.7rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.1); color:#94a3b8;">Default / Env</span>
-        </div>
-        <input type="password" id="l-input-gemini" placeholder="AIzaSy... (Generative AI key)" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:8px 12px; color:#fff; font-size:0.85rem;" />
-      </div>
-
-      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 14px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <label style="font-size:0.85rem; font-weight:700; color:#34d399;">MapTiler 3D Vector & Elevation Key</label>
-          <span id="l-badge-maptiler" style="font-size:0.7rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.1); color:#94a3b8;">Default / Env</span>
-        </div>
-        <input type="password" id="l-input-maptiler" placeholder="1F9CG... (MapTiler key)" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:8px 12px; color:#fff; font-size:0.85rem;" />
-      </div>
-
-      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 14px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <label style="font-size:0.85rem; font-weight:700; color:#fb7185;">OpenTripMap / OpenAI Key (Optional)</label>
-          <span id="l-badge-opentripmap" style="font-size:0.7rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.1); color:#94a3b8;">Default / Env</span>
-        </div>
-        <input type="password" id="l-input-opentripmap" placeholder="5ae2e... (Optional key)" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:8px 12px; color:#fff; font-size:0.85rem;" />
-      </div>
-    </div>
-
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
-      <button type="button" onclick="clearLandingApiKeys()" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; padding:8px 14px; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer;">Reset to Default</button>
-      <button type="button" onclick="saveLandingApiKeys()" style="background:linear-gradient(135deg, #0284c7, #2563eb); border:none; color:#fff; padding:8px 20px; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 4px 15px rgba(2,132,199,0.4);">Save API Keys</button>
-    </div>
-  </div>
-</div>
-
-<script>
-function openLandingApiModal() {
-  var modal = document.getElementById('landing-api-config-modal');
-  if (modal) modal.style.display = 'flex';
-  var g = localStorage.getItem('geodivert_gemini_key') || '';
-  var m = localStorage.getItem('geodivert_maptiler_key') || '';
-  var o = localStorage.getItem('geodivert_opentripmap_key') || '';
-  document.getElementById('l-input-gemini').value = g;
-  document.getElementById('l-input-maptiler').value = m;
-  document.getElementById('l-input-opentripmap').value = o;
-  updateLBadges(g, m, o);
-}
-function closeLandingApiModal() {
-  var modal = document.getElementById('landing-api-config-modal');
-  if (modal) modal.style.display = 'none';
-}
-function updateLBadges(g, m, o) {
-  var bg = document.getElementById('l-badge-gemini');
-  var bm = document.getElementById('l-badge-maptiler');
-  var bo = document.getElementById('l-badge-opentripmap');
-  if (bg) { bg.textContent = g ? 'Custom Active' : 'Default / Env'; bg.style.color = g ? '#34d399' : '#94a3b8'; }
-  if (bm) { bm.textContent = m ? 'Custom Active' : 'Default / Env'; bm.style.color = m ? '#34d399' : '#94a3b8'; }
-  if (bo) { bo.textContent = o ? 'Custom Active' : 'Default / Env'; bo.style.color = o ? '#34d399' : '#94a3b8'; }
-}
-function saveLandingApiKeys() {
-  var g = document.getElementById('l-input-gemini').value.trim();
-  var m = document.getElementById('l-input-maptiler').value.trim();
-  var o = document.getElementById('l-input-opentripmap').value.trim();
-  if (g) localStorage.setItem('geodivert_gemini_key', g); else localStorage.removeItem('geodivert_gemini_key');
-  if (m) localStorage.setItem('geodivert_maptiler_key', m); else localStorage.removeItem('geodivert_maptiler_key');
-  if (o) localStorage.setItem('geodivert_opentripmap_key', o); else localStorage.removeItem('geodivert_opentripmap_key');
-  updateLBadges(g, m, o);
-  closeLandingApiModal();
-  alert('🔑 API Keys saved successfully!');
-}
-function clearLandingApiKeys() {
-  localStorage.removeItem('geodivert_gemini_key');
-  localStorage.removeItem('geodivert_maptiler_key');
-  localStorage.removeItem('geodivert_opentripmap_key');
-  document.getElementById('l-input-gemini').value = '';
-  document.getElementById('l-input-maptiler').value = '';
-  document.getElementById('l-input-opentripmap').value = '';
-  updateLBadges('', '', '');
-  alert('🔄 API keys reset to environment defaults.');
-}
 </script>
 
 <!-- Scripts -->

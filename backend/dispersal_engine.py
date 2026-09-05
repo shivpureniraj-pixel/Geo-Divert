@@ -45,9 +45,18 @@ def run_spatial_dispersal(
 
     user_pref_set = set(p.lower() for p in user_preferences)
 
-    # Resolve coordinates if a named search was provided
-    resolved_name = query_name or "My Location"
-    if query_name and query_name.lower() not in ["origin point", "my current location", "my gps location", "selected location", "my location (gps)"]:
+    # Check if query represents the user's current GPS location
+    user_location_identifiers = [
+        "origin point", "my current location", "my gps location", "selected location", 
+        "my location (gps)", "your current location", "your location", "gps location", 
+        "real-time location", "live gps", "current location"
+    ]
+    is_user_gps = (not query_name) or any(id_str in query_name.lower() for id_str in user_location_identifiers)
+
+    if is_user_gps:
+        resolved_name = "Your Current Location (GPS)"
+    else:
+        resolved_name = query_name
         geocoded = geocode_location(query_name)
         if geocoded:
             origin_lat = geocoded["lat"]
@@ -147,6 +156,7 @@ def run_spatial_dispersal(
             "longitude": origin_lon,
             "crowd_score": origin_crowd,
             "crowd_status": origin_status,
+            "is_user_gps": is_user_gps,
             "reroute_recommended": origin_crowd >= 50
         },
         "recommended_alternative": best_candidate,

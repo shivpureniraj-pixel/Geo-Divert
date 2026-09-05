@@ -3,471 +3,386 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GeoDivert – AI Tourism Crowd Redistribution & Spatial Dispersal</title>
-  <meta name="description" content="Dynamic ML-driven spatial crowd dispersal routing tourists away from congested tourist traps to serene cultural corridors." />
+  <title>GeoDivert – AI Tourism Crowd Redistribution & 3D Spatial Dispersal</title>
+  <meta name="description" content="Dynamic ML crowd density prediction & 3D spatial dispersal routing tourists away from congested spots in Amravati to serene cultural corridors." />
 
-  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <!-- MapLibre GL JS & MapTiler SDK CSS for 3D Map Rendering -->
+  <!-- MapLibre GL JS & MapTiler SDK CSS -->
   <link href="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.0/maptiler-sdk.css" rel="stylesheet" />
   <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
 
   <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="css/styles.css" />
+
+  <style>
+    /* Custom density circles and clean map UI */
+    .density-dot {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+      box-shadow: 0 0 8px currentColor;
+    }
+    .dot-green { background: #10b981; color: #10b981; }
+    .dot-yellow { background: #f59e0b; color: #f59e0b; }
+    .dot-red { background: #f43f5e; color: #f43f5e; }
+
+    /* User location radar ping marker */
+    .user-location-marker {
+      position: relative;
+      width: 24px;
+      height: 24px;
+    }
+    .user-location-marker .core-dot {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 14px;
+      height: 14px;
+      background: #38bdf8;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px #38bdf8;
+      z-index: 2;
+    }
+    .user-location-marker .pulse-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 32px;
+      height: 32px;
+      border: 2px solid rgba(56, 189, 248, 0.8);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: userRadarPing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+      z-index: 1;
+    }
+    @keyframes userRadarPing {
+      0% { width: 14px; height: 14px; opacity: 1; }
+      100% { width: 44px; height: 44px; opacity: 0; }
+    }
+
+    /* Clean compact map card */
+    .clean-map-wrapper {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      background: #0b1120;
+    }
+
+    .clean-map-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 18px;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .density-legend-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    /* Floating control bar on map */
+    .map-controls-float {
+      display: flex;
+      gap: 8px;
+    }
+
+    .map-btn-compact {
+      background: rgba(30, 41, 59, 0.85);
+      color: #f8fafc;
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .map-btn-compact:hover {
+      background: #38bdf8;
+      color: #0b1120;
+    }
+  </style>
 </head>
 <body>
 
-  <!-- Ambient Background Glows -->
+  <!-- Background Ambient Glow -->
   <div class="ambient-glow-1" aria-hidden="true"></div>
   <div class="ambient-glow-2" aria-hidden="true"></div>
 
-  <!-- Mission Banner Strip -->
-  <div class="mission-banner">
-    🧭 <strong>GeoDivert Reverse-Crowd AI Engine</strong>: Real-time ML crowd density prediction & spatial routing to serene cultural corridors and local merchants.
-  </div>
-
-  <!-- 1. SITE HEADER -->
-  <header class="site-header" id="home">
+  <!-- Top Navigation Header -->
+  <header class="site-header">
     <div class="container header-inner">
-      <a href="#home" class="brand-logo" aria-label="GeoDivert Home">
+      <div class="brand-logo">
         <div class="brand-icon">🧭</div>
         <span class="brand-name">GeoDivert</span>
-        <span class="brand-badge">Reverse-Crowd AI</span>
-      </a>
+        <span class="brand-badge">Amravati AI Engine</span>
+      </div>
 
-      <nav aria-label="Main Navigation">
-        <ul class="nav-menu">
-          <li><a href="#explore-section" class="nav-link active">Search & Location</a></li>
-          <li><a href="#map-section" class="nav-link">3D Live Map</a></li>
-          <li><a href="#results-section" class="nav-link">Dispersal Engine</a></li>
-          <li>
-            <button type="button" class="nav-pref-btn" id="nav-pref-btn" title="Customize travel preferences">
-              🎯 Preferences <span class="nav-pref-count" id="nav-pref-count">2 Active</span>
-            </button>
-          </li>
-        </ul>
-      </nav>
-
-      <div class="nav-actions">
-        <div class="live-radar-badge" id="radar-badge" title="FastAPI ML Model & OpenTripMap Active">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button type="button" class="nav-pref-btn" id="nav-pref-btn" style="padding:6px 14px; font-size:0.82rem;">
+          🎯 Preferences <span class="nav-pref-count" id="nav-pref-count">Active</span>
+        </button>
+        <div class="live-radar-badge" id="radar-badge">
           <span class="radar-dot"></span>
-          <span id="radar-status-text">ML Model: Online</span>
+          <span id="radar-status-text">ML DecisionTree: Online</span>
         </div>
       </div>
     </div>
   </header>
 
-  <main>
-    <!-- 2. HERO / SEARCH & LOCATION CONTROLS -->
-    <section class="hero-section" id="explore-section">
-      <div class="container">
-        <div class="hero-pill">
-          <span class="sparkle">✨</span>
-          <span>DecisionTree ML Crowd Prediction & Spatial Dispersal</span>
+  <main class="container" style="padding-top: 1.25rem; padding-bottom: 3rem;">
+
+    <!-- 1. COMPACT TOP TOOLBAR: LOCATION SEARCH & TIME CONTROLS -->
+    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 14px 18px; margin-bottom: 1.25rem; backdrop-filter: blur(12px);">
+      
+      <!-- Search & Geolocation Row -->
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom: 12px;">
+        <div style="flex:1; min-width:280px; position:relative; display:flex; align-items:center; background:#1e293b; border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:0 12px;">
+          <span style="color:#94a3b8; font-size:1rem; margin-right:8px;">🔍</span>
+          <input
+            type="text"
+            id="search-input"
+            class="search-input"
+            style="flex:1; background:transparent; border:none; color:#fff; padding:10px 0; font-size:0.9rem; outline:none;"
+            placeholder="Search spot in Amravati (e.g. Ambadevi Temple, Wadali Lake, Chikhaldara)..."
+            autocomplete="off"
+          />
+          <button type="button" id="search-clear-btn" style="background:none; border:none; color:#94a3b8; cursor:pointer; padding:4px 8px;">✕</button>
         </div>
 
-        <h1 class="hero-title">
-          Explore More. <span class="gradient-text">Crowd Less.</span>
-        </h1>
+        <button type="button" id="btn-geolocation" style="display:flex; align-items:center; gap:6px; background:linear-gradient(135deg, #0284c7, #0369a1); color:#fff; border:none; padding:10px 16px; border-radius:10px; font-weight:700; font-size:0.85rem; cursor:pointer; box-shadow:0 4px 12px rgba(2,132,199,0.3);">
+          <span>📍</span> Locate Me (GPS)
+        </button>
 
-        <p class="hero-subtitle">
-          Don't waste your day trapped in 60-minute ticket lines. Enter your location or city, and GeoDivert dynamically evaluates crowd levels to route you to verified serene cultural landmarks and local family businesses.
+        <button type="button" id="explore-btn" style="background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-weight:700; font-size:0.85rem; cursor:pointer;">
+          Inspect Crowd →
+        </button>
+      </div>
+
+      <!-- Quick Location Chips for Amravati -->
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom: 12px;">
+        <span style="font-size:0.78rem; font-weight:700; color:#94a3b8;">Amravati Spots:</span>
+        <button type="button" class="quick-chip" data-query="Shri Ambadevi & Ekvira Mandir">🙏 Ambadevi Temple</button>
+        <button type="button" class="quick-chip" data-query="Wadali Talao & Eco Park">🌊 Wadali Lake</button>
+        <button type="button" class="quick-chip" data-query="Bamboo Garden Botanical Reserve">🎋 Bamboo Garden</button>
+        <button type="button" class="quick-chip" data-query="Kondeshwar Shiva Temple & Waterfalls">⛰️ Kondeshwar Gorge</button>
+        <button type="button" class="quick-chip" data-query="Chikhaldara Hill Station & Gawilghur Fort">☕ Chikhaldara Hill</button>
+        <button type="button" class="quick-chip" data-query="Chatri Talao Heritage Lake">🌅 Chatri Talao</button>
+      </div>
+
+      <!-- Time of Day & Day of Week Interactive Slider -->
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; background:rgba(0,0,0,0.25); padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.06);">
+        <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:280px;">
+          <span style="font-size:0.84rem; font-weight:700; color:#38bdf8; white-space:nowrap;">
+            ⏰ Time: <strong id="time-display-label">14:00 (2:00 PM)</strong>
+          </span>
+          <input type="range" id="time-slider" min="0" max="23" value="14" step="1" style="flex:1; cursor:pointer; accent-color:#38bdf8;" />
+        </div>
+
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" class="time-slot-btn" id="btn-day-weekday" data-day="2" style="padding:4px 10px; font-size:0.78rem;">🏢 Weekday</button>
+          <button type="button" class="time-slot-btn active" id="btn-day-weekend" data-day="6" style="padding:4px 10px; font-size:0.78rem;">🎉 Weekend</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 2. 3D MAP VIEWPORT (PROMINENT & UNOBSTRUCTED) -->
+    <div class="clean-map-wrapper">
+      <div class="clean-map-header">
+        <div class="density-legend-bar">
+          <span>Density:</span>
+          <span><span class="density-dot dot-green"></span> 🟢 Serene (&lt;40%)</span>
+          <span><span class="density-dot dot-yellow"></span> 🟡 Moderate (40-69%)</span>
+          <span><span class="density-dot dot-red"></span> 🔴 High Crowd (&ge;70%)</span>
+          <span><span style="color:#38bdf8;">📍</span> You Are Here</span>
+        </div>
+
+        <div class="map-controls-float">
+          <button type="button" class="map-btn-compact" id="btn-toggle-3d" onclick="window.GeoDivertMap.toggle3D()">
+            🏔️ 3D Tilt (70°)
+          </button>
+          <button type="button" class="map-btn-compact" id="btn-toggle-heatmap" onclick="window.GeoDivertMap.toggleHeatmap()">
+            🔥 Heatmap
+          </button>
+          <button type="button" class="map-btn-compact" onclick="window.GeoDivertMap.resetBounds()">
+            🎯 Recenter
+          </button>
+        </div>
+      </div>
+
+      <!-- 3D Map Canvas -->
+      <div id="map-container" style="width:100%; height:500px; background:#0b1120; position:relative;"></div>
+    </div>
+
+    <!-- 3. COMPACT REAL-TIME ML PREDICTION & DISPERSAL CARDS -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem; margin-top:1.25rem;">
+      
+      <!-- Selected Origin Spot Card -->
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 18px; backdrop-filter: blur(12px);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+          <div>
+            <span style="font-size:0.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px;">Evaluated Anchor Location</span>
+            <h3 id="dest-name" style="font-size:1.2rem; margin-top:3px; color:#fff;">Shri Ambadevi Temple</h3>
+            <p id="dest-category" style="font-size:0.8rem; color:#94a3b8;">Ancient Sacred Heritage</p>
+          </div>
+          <div id="dest-crowd-status-pill" style="display:flex; align-items:center; gap:5px; background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.4); padding:4px 10px; border-radius:20px;">
+            <span class="density-dot dot-red" id="dest-dot"></span>
+            <strong id="dest-crowd-percent" style="font-size:0.95rem; color:#f43f5e;">95.4%</strong>
+          </div>
+        </div>
+
+        <div style="margin: 12px 0;">
+          <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#94a3b8; margin-bottom:4px;">
+            <span>ML Predicted Congestion</span>
+            <span id="dest-wait-time" style="color:#f43f5e; font-weight:700;">⏱️ ~50 min wait</span>
+          </div>
+          <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+            <div id="dest-crowd-meter-fill" style="width:95%; height:100%; background:linear-gradient(90deg, #f59e0b, #f43f5e); transition:width 0.3s ease;"></div>
+          </div>
+        </div>
+
+        <p style="font-size:0.82rem; color:#cbd5e1; line-height:1.5;" id="dest-alert-message">
+          ⚠️ High visitor congestion predicted for this time. GeoDivert has routed an optimal calm cultural sanctuary nearby.
         </p>
+      </div>
 
-        <!-- Search Input Bar with GPS and Geocoding -->
-        <div class="search-container">
-          <div class="search-input-wrapper">
-            <span class="search-icon" aria-hidden="true">🔍</span>
-            <input
-              type="text"
-              id="search-input"
-              class="search-input"
-              placeholder="Search your city or hotel (e.g. Amravati, Sitabuldi, Wadali Talao, Chikhaldara)..."
-              aria-label="Search destination"
-              autocomplete="off"
-            />
-            <button type="button" id="btn-geolocation" class="search-clear-btn" style="display:flex; align-items:center; justify-content:center; width:auto; padding:0 14px; gap:6px; font-size:0.82rem; font-weight:700; color:var(--primary); background:rgba(56,189,248,0.12); border-radius:8px;" title="Detect my current location">
-              📍 My Location
-            </button>
-            <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="Clear input">✕</button>
-            <button type="button" id="explore-btn" class="explore-button">
-              <span>Inspect Crowd</span>
-              <span aria-hidden="true">→</span>
-            </button>
+      <!-- Recommended Serene Alternative Card -->
+      <div style="background: rgba(6, 78, 59, 0.3); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 14px; padding: 18px; backdrop-filter: blur(12px); position:relative;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+          <div>
+            <span style="font-size:0.75rem; font-weight:700; color:#34d399; text-transform:uppercase; letter-spacing:0.5px;">✨ Recommended Serene Spot</span>
+            <h3 id="rec-name" style="font-size:1.2rem; margin-top:3px; color:#fff;">Wadali Talao & Eco Park</h3>
+            <p id="rec-category" style="font-size:0.8rem; color:#34d399;">Scenic Lake & Botanical Park</p>
           </div>
-
-          <!-- Autocomplete Suggestions -->
-          <div id="autocomplete-dropdown" class="autocomplete-dropdown" role="listbox" aria-label="Suggestions"></div>
+          <div style="display:flex; align-items:center; gap:5px; background:rgba(16,185,129,0.18); border:1px solid rgba(16,185,129,0.5); padding:4px 10px; border-radius:20px;">
+            <span class="density-dot dot-green" id="rec-dot"></span>
+            <strong id="rec-crowd-percent" style="font-size:0.95rem; color:#34d399;">21.1%</strong>
+          </div>
         </div>
 
-        <!-- Quick Location Chips -->
-        <div class="quick-chips-wrapper">
-          <span class="quick-chips-label">Quick Locations:</span>
-          <button type="button" class="quick-chip" data-query="Amravati">
-            <span>📍</span> Amravati (My City)
-          </button>
-          <button type="button" class="quick-chip" data-query="Shri Ambadevi Temple Amravati">
-            <span>🙏</span> Ambadevi Temple
-          </button>
-          <button type="button" class="quick-chip" data-query="Wadali Talao Amravati">
-            <span>🌊</span> Wadali Lake
-          </button>
-          <button type="button" class="quick-chip" data-query="Chikhaldara Hill Station">
-            <span>⛰️</span> Chikhaldara Fort
-          </button>
-          <button type="button" class="quick-chip" data-query="Sitabuldi Fort Nagpur">
-            <span>🏰</span> Sitabuldi Fort
-          </button>
+        <!-- 4 Metrics Row -->
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin: 12px 0; background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:8px; text-align:center;">
+          <div>
+            <div style="font-size:0.7rem; color:#94a3b8;">Crowd</div>
+            <strong style="font-size:0.85rem; color:#34d399;" id="rec-crowd-status">SERENE</strong>
+          </div>
+          <div>
+            <div style="font-size:0.7rem; color:#94a3b8;">Distance</div>
+            <strong style="font-size:0.85rem; color:#fff;" id="rec-distance">3.8 km</strong>
+          </div>
+          <div>
+            <div style="font-size:0.7rem; color:#94a3b8;">Drive Time</div>
+            <strong style="font-size:0.85rem; color:#fbbf24;" id="rec-duration">11 mins</strong>
+          </div>
+          <div>
+            <div style="font-size:0.7rem; color:#94a3b8;">Reduction</div>
+            <strong style="font-size:0.85rem; color:#34d399;" id="rec-reduction-text">-74%</strong>
+          </div>
+        </div>
+
+        <button type="button" id="btn-explore-alternative" style="width:100%; background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:700; font-size:0.82rem; cursor:pointer;">
+          🗺️ View 3D Road Navigation Route
+        </button>
+      </div>
+
+    </div>
+
+    <!-- 4. PAIRED LOCAL MERCHANT & GEMINI TOUR GUIDE NARRATIVE -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem; margin-top:1.25rem;">
+      
+      <!-- Gemini 1.5 Flash Tour Guide Box -->
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 14px; padding: 18px; backdrop-filter: blur(12px);">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:1.1rem;">🎙️</span>
+          <strong style="color:#38bdf8; font-size:0.9rem;">Gemini 1.5 Flash Tour Guide Story:</strong>
+        </div>
+        <p id="gemini-story-text" style="font-size:0.86rem; line-height:1.6; color:#f1f5f9;">
+          Synthesizing interactive tour narrative for your serene Amravati route...
+        </p>
+      </div>
+
+      <!-- Paired Local Merchant Card -->
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 14px; padding: 18px; backdrop-filter: blur(12px);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:0.75rem; font-weight:700; color:#fbbf24;">🏪 PAIRED LOCAL MERCHANT</span>
+          <span id="merchant-rating" style="font-size:0.8rem; font-weight:700; color:#fbbf24;">⭐ 4.8</span>
+        </div>
+        <h4 id="merchant-name" style="font-size:1.05rem; color:#fff; margin-bottom:4px;">Raghuveer Sweets & Heritage Tea House</h4>
+        <p id="merchant-desc" style="font-size:0.82rem; color:#94a3b8; line-height:1.5; margin-bottom:8px;">
+          Famous 40-year-old local bakery in Amravati known for fresh mawa jalebi and herbal cardamom tea.
+        </p>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.76rem; color:#34d399; font-weight:600;">
+          <span id="merchant-dist">📍 220 m from destination</span>
+          <span style="color:#94a3b8;">Supporting Independent Family Businesses</span>
         </div>
       </div>
-    </section>
 
-    <!-- 3. 3D MAP SECTION (MAPLIBRE GL JS & MAPTILER) -->
-    <section class="map-section" id="map-section" style="padding-top: 1rem;">
-      <div class="container">
-        <div class="map-card-wrapper">
-          <div class="map-card-header">
-            <div class="map-legend">
-              <div class="legend-item">
-                <span class="legend-dot red" style="background:#f43f5e; box-shadow:0 0 8px #f43f5e;"></span>
-                <span>High Crowd Red Zone (Overcrowded)</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-dot green" style="background:#10b981; box-shadow:0 0 8px #10b981;"></span>
-                <span>Calm Corridor (Recommended Hidden Gem)</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-dot blue" style="background:#38bdf8; box-shadow:0 0 8px #38bdf8;"></span>
-                <span>3D Navigation Route</span>
-              </div>
-            </div>
+    </div>
 
-            <div class="map-quick-actions">
-              <button type="button" class="map-action-btn" id="btn-toggle-3d" onclick="window.GeoDivertMap.toggle3D()">
-                🏔️ Toggle 3D Pitch (70°)
-              </button>
-              <button type="button" class="map-action-btn" id="btn-toggle-heatmap" onclick="window.GeoDivertMap.toggleHeatmap()">
-                🔥 Toggle Crowd Heatmap
-              </button>
-              <button type="button" class="map-action-btn" onclick="window.GeoDivertMap.resetBounds()">
-                🎯 Recenter Map
-              </button>
-            </div>
-          </div>
-
-          <!-- 3D Map Canvas -->
-          <div id="map-container" class="map-view-3d" style="width:100%; height:530px; background:#0b1120; position:relative; overflow:hidden;"></div>
-        </div>
+    <!-- 5. ALL AMRAVATI MONITORED TOURIST DESTINATIONS DECK -->
+    <div style="margin-top:2rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="font-size:1.1rem; color:#fff;">📍 Amravati Tourist Attractions (Live DecisionTree Predictions)</h3>
+        <span style="font-size:0.8rem; color:#94a3b8;">Click any card to inspect and route</span>
       </div>
-    </section>
 
-    <!-- 4. REAL-TIME TIME SIMULATOR & DISPERSAL RESULTS -->
-    <section id="results-section" class="results-section" aria-label="Dispersal Analysis Results" style="margin-top: 2rem;">
-      <div class="container">
-
-        <!-- Time Controls Bar: Dynamic ML Predictions across hours -->
-        <div class="results-header-toolbar" style="flex-direction:column; align-items:flex-start; gap:1rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; width:100%; flex-wrap:wrap; gap:1rem;">
-            <div class="results-title-group">
-              <h2>🎯 Dynamic ML Crowd Dispersal Engine</h2>
-              <p>Predicted crowd scores calculate live through Scikit-Learn DecisionTree: min F(x) = α·Dist + β·Crowd - γ·Value - δ·Preferences</p>
-            </div>
-
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:0.85rem; color:#94a3b8; font-weight:600;">Day:</span>
-              <button type="button" class="time-slot-btn" id="btn-day-weekday" data-day="2">🏢 Weekday (Wed)</button>
-              <button type="button" class="time-slot-btn active" id="btn-day-weekend" data-day="6">🎉 Weekend (Sun)</button>
-            </div>
-          </div>
-
-          <!-- Time of Day Selector & Slider -->
-          <div style="display:flex; align-items:center; justify-content:space-between; width:100%; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:0.85rem 1.25rem; flex-wrap:wrap; gap:1rem;">
-            <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:280px;">
-              <span style="font-size:0.85rem; font-weight:700; color:var(--primary); white-space:nowrap;">⏰ Time of Day: <span id="time-display-label">14:00 (2:00 PM)</span></span>
-              <input type="range" id="time-slider" min="0" max="23" value="14" step="1" style="flex:1; cursor:pointer; accent-color:var(--primary);" />
-            </div>
-
-            <div class="time-slot-selector" style="margin:0;">
-              <button type="button" class="time-slot-btn" data-hour="3">🌌 Night (3 AM)</button>
-              <button type="button" class="time-slot-btn" data-hour="9">🌅 Morning (9 AM)</button>
-              <button type="button" class="time-slot-btn active" data-hour="14">☀️ Midday Peak (2 PM)</button>
-              <button type="button" class="time-slot-btn" data-hour="18">🌙 Evening (6 PM)</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Dispersal Comparison Grid -->
-        <div class="dispersal-split-grid" style="margin-top:1.5rem;">
-
-          <!-- Selected Origin Spot Card (No dummy images, clean gradient badge) -->
-          <div class="dest-card" id="selected-dest-card">
-            <div class="dest-card-banner" style="background:linear-gradient(135deg, #1e1b4b, #311042); display:flex; align-items:center; justify-content:center; height:140px; position:relative;">
-              <span style="font-size:3.5rem;" id="dest-icon">📍</span>
-              <span class="dest-card-tag">Origin Location</span>
-              <div class="crowd-status-pill" id="dest-crowd-status" style="background:#f43f5e;">HIGH CROWD</div>
-            </div>
-
-            <div class="dest-card-body">
-              <div class="dest-card-header">
-                <h3 id="dest-name">Analyzing Location...</h3>
-                <span class="dest-category-text" id="dest-category">Evaluated Anchor Point</span>
-                <p style="font-size: 0.8rem; color: #94a3b8;" id="dest-location">Location detected</p>
-              </div>
-
-              <!-- Crowd Level Meter -->
-              <div class="crowd-meter-module">
-                <div class="crowd-meter-info">
-                  <span class="crowd-meter-label">Live DecisionTree Crowd Prediction</span>
-                  <span class="crowd-meter-val" id="dest-crowd-percent">--%</span>
-                </div>
-                <div class="meter-track">
-                  <div class="meter-fill bg-high" id="dest-crowd-meter-fill" style="width: 50%;"></div>
-                </div>
-              </div>
-
-              <!-- Alert Message -->
-              <div class="dest-alert-banner">
-                <span class="alert-icon">⚠️</span>
-                <div>
-                  <strong>High Congestion Corridor</strong>
-                  <p id="dest-alert-message">
-                    Peak crowd bottleneck detected for this time. GeoDivert is calculating an optimal uncrowded alternative nearby.
-                  </p>
-                </div>
-              </div>
-
-              <!-- Meta -->
-              <div class="dest-quick-meta">
-                <span id="dest-wait-time">⏱️ ~45 min congestion</span>
-                <span id="dest-peak-hours">⏰ Peak: 11 AM - 5 PM</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- SMART DIVERSION RECOMMENDED CARD -->
-          <div class="recommendation-card" id="recommendation-card">
-            <div class="rec-badge-top">
-              <span>✨ Recommended Hidden Gem</span>
-              <span class="pref-match-badge" id="rec-pref-match-badge">🎯 95% Match</span>
-            </div>
-
-            <div class="rec-banner" style="background:linear-gradient(135deg, #064e3b, #042f2e); display:flex; align-items:center; justify-content:center; height:140px; position:relative;">
-              <span style="font-size:3.5rem;" id="rec-icon">🌿</span>
-            </div>
-
-            <div class="rec-body">
-              <div class="rec-header">
-                <h3 id="rec-name">Evaluating Optimal Corridor...</h3>
-                <p style="font-size: 0.85rem; color: #34d399; font-weight: 600;" id="rec-category">Serene Cultural Sanctuary</p>
-              </div>
-
-              <!-- 4-Stat Strip -->
-              <div class="rec-metrics-strip">
-                <div class="rec-metric-item">
-                  <span class="metric-label">Crowd</span>
-                  <span class="metric-val" id="rec-crowd-percent" style="color:#34d399;">--%</span>
-                </div>
-                <div class="rec-metric-item">
-                  <span class="metric-label">Status</span>
-                  <span class="metric-val" id="rec-crowd-status" style="color: #34d399;">SERENE</span>
-                </div>
-                <div class="rec-metric-item">
-                  <span class="metric-label">Distance</span>
-                  <span class="metric-val" id="rec-distance">-- km</span>
-                </div>
-                <div class="rec-metric-item">
-                  <span class="metric-label">Drive Time</span>
-                  <span class="metric-val" id="rec-duration">-- mins</span>
-                </div>
-              </div>
-
-              <!-- Reduction Highlight Banner -->
-              <div class="rec-reduction-highlight" id="rec-reduction-badge">
-                🎉 Calculating crowd reduction...
-              </div>
-
-              <!-- Why We Recommend This -->
-              <div class="rec-reasons-box">
-                <h4>Why GeoDivert Recommends This:</h4>
-                <ul class="rec-reasons-list" id="rec-reasons-list">
-                  <li>🟢 <strong>Zero Wait Time:</strong> Peaceful capacity utilization for the selected hour.</li>
-                  <li>🏛️ <strong>Verified Cultural Spot:</strong> Verified Point of Interest via OpenTripMap.</li>
-                  <li>🎯 <strong>Personalized Preference Match:</strong> Aligned with your active interests.</li>
-                </ul>
-              </div>
-
-              <!-- Gemini 1.5 Flash Tour Guide Narrative Box -->
-              <div class="ai-tour-guide-box" id="ai-tour-guide-box" style="margin-top: 1.25rem; margin-bottom: 1.25rem; padding: 1.25rem; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: var(--radius-md);">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:0.6rem;">
-                  <span style="font-size:1.3rem;">🎙️</span>
-                  <strong style="color:var(--primary); font-size:1rem;">Gemini 1.5 Flash AI Tour Guide Story:</strong>
-                </div>
-                <p id="gemini-story-text" style="font-size:0.92rem; line-height:1.65; color:#f8fafc;">
-                  Loading personalized narrative from Gemini 1.5 Flash...
-                </p>
-              </div>
-
-              <!-- Paired Local Merchant Card -->
-              <div class="paired-merchant-box" id="paired-merchant-box" style="padding: 1rem; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); margin-bottom: 1.25rem;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
-                  <span style="font-size:0.8rem; font-weight:700; color:#fbbf24;">🏪 PAIRED LOCAL MERCHANT (Within 800m-1.5km)</span>
-                  <span id="merchant-rating" style="font-size:0.8rem; font-weight:700; color:#fbbf24;">⭐ 4.7</span>
-                </div>
-                <h4 id="merchant-name" style="font-size:1.05rem; margin-bottom:0.3rem;">Loading Local Merchant...</h4>
-                <p id="merchant-desc" style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.4rem;">
-                  Connecting tourists directly to local independent family bakeries and cafes.
-                </p>
-                <span id="merchant-dist" style="font-size:0.75rem; color:#34d399; font-weight:600;">📍 Supporting Local Community Economy</span>
-              </div>
-
-              <!-- Button -->
-              <button type="button" class="btn-explore-alternative" id="btn-explore-alternative">
-                <span>View 3D Road Navigation Route</span>
-                <span>🗺️</span>
-              </button>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- TOP 3 ALTERNATIVES DECK -->
-        <div class="alt-deck-title" style="margin-top: 2rem;">
-          <span>🔀 Top 3 AI Ranked Alternatives</span>
-          <span style="font-size:0.85rem; color:var(--text-muted); font-weight:normal;">(Ranked by Spatial Dispersal Formula)</span>
-        </div>
-
-        <div class="alt-deck-grid" id="alt-deck-grid">
-          <!-- Populated dynamically -->
-        </div>
-
-        <!-- CROWD COMPARISON SECTION -->
-        <div class="comparison-section-box" style="margin-top: 2rem;">
-          <div class="comp-header">
-            <h3>⚖️ Live Crowd Redistribution Impact</h3>
-            <p>Spatial Dispersal balance comparing origin point vs. recommended serene spot</p>
-          </div>
-
-          <div class="comparison-duel-grid">
-            <div class="duel-side red">
-              <div class="duel-title-row">
-                <span class="duel-place-name" id="comp-orig-name">Origin Point</span>
-                <span class="duel-crowd-val" id="comp-orig-percent">--% 🔴 HIGH</span>
-              </div>
-              <div class="meter-track">
-                <div class="meter-fill bg-high" id="comp-orig-bar" style="width: 50%;"></div>
-              </div>
-            </div>
-
-            <div class="duel-vs-badge">VS</div>
-
-            <div class="duel-side green">
-              <div class="duel-title-row">
-                <span class="duel-place-name" id="comp-alt-name">Recommended Alternative</span>
-                <span class="duel-crowd-val" id="comp-alt-percent">--% 🟢 SERENE</span>
-              </div>
-              <div class="meter-track">
-                <div class="meter-fill bg-low" id="comp-alt-bar" style="width: 50%;"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="comp-impact-quote" id="comp-diff-badge">
-            📉 <strong>Crowd Reduction Active</strong>: Preserving heritage sites and bypassing ticket queues.
-          </div>
-        </div>
-
-        <!-- ROUTE SECTION -->
-        <div class="route-section-box" id="route-section">
-          <div class="route-header-row">
-            <div>
-              <h3>🛣️ Dispersal Road Navigation Route</h3>
-              <p style="font-size: 0.85rem; color: #94a3b8;">Real-world road network path retrieved via OSRM navigating through calm corridors</p>
-            </div>
-
-            <div class="transport-mode-tabs" role="tablist">
-              <button type="button" class="mode-tab-btn active" data-mode="drive">🚗 Drive</button>
-              <button type="button" class="mode-tab-btn" data-mode="transit">🚌 Transit</button>
-              <button type="button" class="mode-tab-btn" data-mode="walk">🚶 Walk</button>
-            </div>
-          </div>
-
-          <div class="route-steps-grid">
-            <div class="route-step-card">
-              <span class="step-label">Origin Location</span>
-              <span class="step-val" id="route-start">--</span>
-            </div>
-            <div class="route-step-card">
-              <span class="step-label">Recommended Destination</span>
-              <span class="step-val" id="route-end" style="color: #34d399;">--</span>
-            </div>
-            <div class="route-step-card">
-              <span class="step-label">Estimated Distance</span>
-              <span class="step-val" id="route-distance">-- km</span>
-            </div>
-            <div class="route-step-card">
-              <span class="step-label">Estimated Travel Time</span>
-              <span class="step-val" id="route-duration" style="color: #fbbf24;">🚗 -- mins</span>
-            </div>
-          </div>
-        </div>
-
+      <div id="alt-deck-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:12px;">
+        <!-- Dynamically rendered -->
       </div>
-    </section>
+    </div>
+
   </main>
 
-  <!-- TRAVEL PREFERENCES SELECTION MODAL -->
-  <div class="modal-backdrop" id="preferences-modal" role="dialog" aria-modal="true" aria-labelledby="pref-modal-title">
-    <div class="modal-sheet pref-modal-sheet">
-      <button type="button" class="modal-close-btn" id="pref-modal-close-btn" aria-label="Close dialog">✕</button>
+  <!-- Preferences Modal -->
+  <div class="modal-backdrop" id="preferences-modal" role="dialog" aria-modal="true">
+    <div class="modal-sheet pref-modal-sheet" style="max-width:500px;">
+      <button type="button" class="modal-close-btn" id="pref-modal-close-btn">✕</button>
       <div class="pref-modal-header">
-        <div class="pref-badge">🎯 AI Personalization Engine</div>
-        <h2 id="pref-modal-title">Select Your Travel Preferences</h2>
-        <p class="pref-modal-subtitle">GeoDivert factors your interests directly into the multi-objective spatial dispersal formula.</p>
+        <div class="pref-badge">🎯 Personalization</div>
+        <h2>Travel Preferences</h2>
+        <p class="pref-modal-subtitle">Prioritize categories in the spatial dispersal formula.</p>
       </div>
 
-      <!-- Preference Category Cards -->
-      <div class="pref-categories-grid" id="pref-categories-grid">
-        <!-- Populated dynamically -->
-      </div>
+      <div class="pref-categories-grid" id="pref-categories-grid"></div>
 
-      <!-- Modal Footer -->
       <div class="pref-modal-footer">
         <div class="pref-count-indicator" id="pref-count-indicator">2 categories selected</div>
         <div class="pref-footer-btns">
-          <button type="button" class="pref-clear-btn" id="pref-clear-btn">Clear All</button>
-          <button type="button" class="pref-save-btn" id="pref-save-btn">✨ Save Preferences</button>
+          <button type="button" class="pref-clear-btn" id="pref-clear-btn">Clear</button>
+          <button type="button" class="pref-save-btn" id="pref-save-btn">Save</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Toast Notification Container -->
-  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+  <div class="toast-container" id="toast-container"></div>
 
-  <!-- Footer -->
-  <footer class="site-footer" style="margin-top: 4rem;">
-    <div class="container footer-content">
-      <div class="footer-brand">
-        <span>🧭</span>
-        <span>GeoDivert</span>
-      </div>
-      <p class="footer-tagline">
-        AI-Powered Tourism Crowd Redistribution, 3D MapLibre Heatmap & Local Merchant Pairing Engine.
-      </p>
-      <div class="footer-copyright">
-        © 2026 GeoDivert. Built with MapLibre GL JS, Scikit-Learn DecisionTree, OpenTripMap & Gemini 1.5 Flash.
-      </div>
-    </div>
-  </footer>
-
-  <!-- MapLibre GL JS & MapTiler SDK JS UMD Bundles -->
+  <!-- MapLibre GL JS & MapTiler SDK UMD -->
   <script src="https://cdn.maptiler.com/maptiler-sdk-js/v2.0.0/maptiler-sdk.umd.js"></script>
   <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
 
-  <!-- Application Modules -->
+  <!-- Application JS -->
   <script src="js/map.js"></script>
   <script src="js/app.js"></script>
 </body>

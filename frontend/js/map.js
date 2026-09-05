@@ -1,6 +1,6 @@
 /**
- * GeoDivert – 3D MapLibre & MapTiler SDK Map Engine
- * Renders 3D Terrain, Turn-by-Turn Road Routes, GeoJSON Crowd Heatmaps, and 3D Location Markers
+ * GeoDivert – 3D MapLibre Map Engine
+ * Renders 3D Terrain, Turn-by-Turn Road Routes, Clean 🟢🟡🔴 Density Badges, and User Location Radar
  */
 
 (function () {
@@ -11,14 +11,12 @@
   let map = null;
   let isMapLoaded = false;
   let queuedActions = [];
-  let currentPitch = 70; // 3D Tilt Angle
+  let currentPitch = 70;
   let activeMarkers = [];
+  let userLocationMarker = null;
   let heatmapVisible = true;
-  let currentCenter = [77.7523, 20.9320]; // Default centered on Amravati
+  let currentCenter = [77.7523, 20.9320]; // Amravati Center
 
-  /**
-   * Initializes the 3D Map Canvas
-   */
   function initMap(containerId, initialCenter) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -31,7 +29,6 @@
       window.maptilersdk.config.apiKey = MAPTILER_KEY;
     }
 
-    // High clarity, modern dark vector tiles
     const styleUrl = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
 
     try {
@@ -42,15 +39,14 @@
         container: containerId,
         style: styleUrl,
         center: currentCenter,
-        zoom: 12.5,
+        zoom: 12.8,
         pitch: currentPitch,
-        bearing: -12,
+        bearing: -10,
         maxPitch: 85,
-        terrainExaggeration: 1.6,
+        terrainExaggeration: 1.5,
         attributionControl: false
       });
 
-      // Add 3D Navigation Controls
       const NavControl = (window.maptilersdk && window.maptilersdk.NavigationControl) 
         ? window.maptilersdk.NavigationControl 
         : (window.maplibregl ? maplibregl.NavigationControl : null);
@@ -60,18 +56,14 @@
       }
 
       map.on('load', function () {
-        console.log('✅ 3D MapLibre Map Initialized at', currentCenter);
+        console.log('✅ 3D MapLibre Initialized for Amravati at', currentCenter);
         isMapLoaded = true;
 
-        // 1. Add 3D Terrain DEM Mesh
         setup3DTerrain();
-
-        // 2. Setup Route Vector Layer
         ensureRouteLayers();
 
-        // 3. Execute any queued render actions
         queuedActions.forEach(fn => {
-          try { fn(); } catch (err) { console.warn('Queued action notice:', err); }
+          try { fn(); } catch (err) { console.warn('Queued map error:', err); }
         });
         queuedActions = [];
 
@@ -80,7 +72,6 @@
         }, 200);
       });
 
-      // Handle map coordinate clicks
       map.on('click', function (e) {
         const lngLat = e.lngLat;
         if (window.GeoDivertApp && window.GeoDivertApp.handleMapClick) {
@@ -89,7 +80,7 @@
       });
 
     } catch (err) {
-      console.warn('Map initialization notice:', err);
+      console.warn('Map init warning:', err);
     }
   }
 
@@ -104,9 +95,9 @@
           maxzoom: 14
         });
       }
-      map.setTerrain({ source: 'maptiler-dem', exaggeration: 1.6 });
+      map.setTerrain({ source: 'maptiler-dem', exaggeration: 1.5 });
     } catch (e) {
-      console.log('3D Terrain info:', e.message);
+      console.log('Terrain info:', e.message);
     }
   }
 
@@ -129,7 +120,7 @@
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
             'line-color': '#0284c7',
-            'line-width': 10,
+            'line-width': 8,
             'line-opacity': 0.8
           }
         });
@@ -143,18 +134,45 @@
           layout: { 'line-join': 'round', 'line-cap': 'round' },
           paint: {
             'line-color': '#38bdf8',
-            'line-width': 5,
+            'line-width': 4,
             'line-opacity': 1.0
           }
         });
       }
     } catch (e) {
-      console.warn('ensureRouteLayers info:', e.message);
+      console.warn('Route layer error:', e.message);
     }
   }
 
   /**
-   * Updates the Glowing Red & Green Crowd Heatmap Layer
+   * Sets User Location Radar Marker (Blue Pulsing Beacon)
+   */
+  function setUserLocation(lat, lon) {
+    if (!map) return;
+
+    if (!isMapLoaded) {
+      queuedActions.push(() => setUserLocation(lat, lon));
+      return;
+    }
+
+    const MarkerClass = (window.maptilersdk && window.maptilersdk.Marker) ? window.maptilersdk.Marker : (window.maplibregl ? maplibregl.Marker : null);
+    if (!MarkerClass) return;
+
+    if (userLocationMarker) {
+      userLocationMarker.remove();
+    }
+
+    const el = document.createElement('div');
+    el.className = 'user-location-marker';
+    el.innerHTML = `<div class="pulse-ring"></div><div class="core-dot" title="You are here"></div>`;
+
+    userLocationMarker = new MarkerClass({ element: el })
+      .setLngLat([lon, lat])
+      .addTo(map);
+  }
+
+  /**
+   * Updates Dynamic Crowd Heatmap
    */
   function updateHeatmap(spots) {
     if (!map) return;
@@ -175,7 +193,7 @@
         properties: {
           id: spot.id,
           name: spot.name,
-          crowd_size: spot.crowd_score || 50
+          crowd_size: spot.crowd_score || 30
         }
       }))
     };
@@ -208,28 +226,28 @@
               'interpolate',
               ['linear'],
               ['zoom'],
-              0, 1.2,
-              16, 3.2
+              0, 1.0,
+              16, 3.0
             ],
             'heatmap-color': [
               'interpolate',
               ['linear'],
               ['heatmap-density'],
               0, 'rgba(0, 0, 0, 0)',
-              0.2, 'rgba(16, 185, 129, 0.55)', // Green Calm Corridor
-              0.5, 'rgba(245, 158, 11, 0.80)', // Amber Moderate
-              0.8, 'rgba(244, 63, 94, 0.95)',  // Red High Crowd
-              1.0, 'rgba(225, 29, 72, 1.0)'    // Crimson Bottleneck
+              0.2, 'rgba(16, 185, 129, 0.5)',
+              0.5, 'rgba(245, 158, 11, 0.75)',
+              0.8, 'rgba(244, 63, 94, 0.9)',
+              1.0, 'rgba(225, 29, 72, 1.0)'
             ],
             'heatmap-radius': [
               'interpolate',
               ['linear'],
               ['zoom'],
-              0, 18,
-              10, 50,
-              16, 95
+              0, 15,
+              10, 45,
+              16, 85
             ],
-            'heatmap-opacity': 0.85
+            'heatmap-opacity': 0.8
           }
         });
       }
@@ -239,7 +257,7 @@
   }
 
   /**
-   * Renders 3D Markers on Map
+   * Renders Clean Markers with 🟢🟡🔴 Circular Density Indicators
    */
   function renderMarkers(spots, originPoint, recPoint) {
     if (!map) return;
@@ -257,80 +275,92 @@
 
     if (!MarkerClass) return;
 
-    // 1. Origin Marker (Red with pulsing glow)
+    // 1. Origin Marker (🔴 High Crowd Pin)
     if (originPoint && originPoint.lat && (originPoint.lon || originPoint.lng)) {
-      const elOrig = document.createElement('div');
-      elOrig.style.cssText = `
-        background: linear-gradient(135deg, #f43f5e, #be123c);
-        color: #ffffff;
-        padding: 7px 14px;
-        border-radius: 20px;
-        font-weight: 800;
-        font-size: 12px;
-        box-shadow: 0 0 18px rgba(244, 63, 94, 0.8);
-        border: 2px solid #ffffff;
+      const el = document.createElement('div');
+      const score = originPoint.crowd_score || 95;
+      const dotColor = score >= 70 ? '#f43f5e' : score >= 40 ? '#f59e0b' : '#10b981';
+      
+      el.style.cssText = `
+        background: #0f172a;
+        color: #fff;
+        padding: 5px 10px;
+        border-radius: 16px;
+        font-weight: 700;
+        font-size: 11px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        border: 2px solid ${dotColor};
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
         white-space: nowrap;
         transform: translate(-50%, -50%);
-        letter-spacing: 0.3px;
       `;
-      elOrig.innerHTML = `📍 Origin: ${originPoint.name || 'Start'} (${originPoint.crowd_score || 91}%)`;
+      el.innerHTML = `<span style="display:inline-block; width:9px; height:9px; border-radius:50%; background:${dotColor}; box-shadow:0 0 6px ${dotColor};"></span> <span>${originPoint.name || 'Origin'}: <strong>${score}%</strong></span>`;
 
-      const mOrig = new MarkerClass({ element: elOrig })
+      const m = new MarkerClass({ element: el })
         .setLngLat([originPoint.lon || originPoint.lng, originPoint.lat])
         .addTo(map);
-      activeMarkers.push(mOrig);
+      activeMarkers.push(m);
     }
 
-    // 2. Recommended Destination Marker (Emerald Green with glowing aura)
+    // 2. Recommended Destination Marker (🟢 Serene Gem Pin)
     if (recPoint && recPoint.lat && (recPoint.lng || recPoint.lon)) {
-      const elRec = document.createElement('div');
-      elRec.style.cssText = `
-        background: linear-gradient(135deg, #10b981, #047857);
-        color: #ffffff;
-        padding: 7px 14px;
-        border-radius: 20px;
+      const el = document.createElement('div');
+      const score = recPoint.crowd_score || 21;
+      
+      el.style.cssText = `
+        background: #064e3b;
+        color: #34d399;
+        padding: 6px 12px;
+        border-radius: 18px;
         font-weight: 800;
-        font-size: 12px;
-        box-shadow: 0 0 20px rgba(16, 185, 129, 0.85);
-        border: 2px solid #ffffff;
+        font-size: 11px;
+        box-shadow: 0 0 16px rgba(16,185,129,0.7);
+        border: 2px solid #34d399;
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
         white-space: nowrap;
         transform: translate(-50%, -50%);
-        letter-spacing: 0.3px;
       `;
-      elRec.innerHTML = `✨ Serene Spot: ${recPoint.name} (${recPoint.crowd_score || 28}%)`;
+      el.innerHTML = `<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#34d399; box-shadow:0 0 8px #34d399;"></span> <span>✨ ${recPoint.name}: <strong>${score}%</strong></span>`;
 
-      const mRec = new MarkerClass({ element: elRec })
+      const m = new MarkerClass({ element: el })
         .setLngLat([recPoint.lng || recPoint.lon, recPoint.lat])
         .addTo(map);
-      activeMarkers.push(mRec);
+      activeMarkers.push(m);
     }
 
-    // 3. Other Candidate Markers
+    // 3. Other Monitored Amravati Spots (Clean minimal circular dots)
     (spots || []).forEach(spot => {
       if (originPoint && spot.name === originPoint.name) return;
       if (recPoint && spot.name === recPoint.name) return;
       if (!spot.lat || (!spot.lng && !spot.lon)) return;
 
-      const score = spot.crowd_score || 50;
-      const badgeColor = score >= 70 ? '#f43f5e' : score >= 40 ? '#f59e0b' : '#10b981';
+      const score = spot.crowd_score || 25;
+      const dotColor = score >= 70 ? '#f43f5e' : score >= 40 ? '#f59e0b' : '#10b981';
 
       const el = document.createElement('div');
       el.style.cssText = `
-        background: ${badgeColor};
-        color: #ffffff;
-        padding: 4px 9px;
-        border-radius: 14px;
-        font-weight: 700;
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-weight: 600;
         font-size: 10px;
-        box-shadow: 0 2px 10px ${badgeColor}70;
-        border: 1.5px solid rgba(255, 255, 255, 0.9);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        border: 1px solid rgba(255,255,255,0.15);
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
         white-space: nowrap;
         transform: translate(-50%, -50%);
       `;
-      el.innerHTML = `<span>${spot.name} (${score}%)</span>`;
+      el.innerHTML = `<span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:${dotColor}; box-shadow:0 0 5px ${dotColor};"></span> <span>${spot.name} (${score}%)</span>`;
 
       el.addEventListener('click', function () {
         if (window.GeoDivertApp && window.GeoDivertApp.selectSpot) {
@@ -342,11 +372,11 @@
         .setLngLat([spot.lng || spot.lon, spot.lat]);
       
       if (PopupClass) {
-        marker.setPopup(new PopupClass({ offset: 15, closeButton: false }).setHTML(`
-          <div style="color:#0f172a; padding:4px; font-family:sans-serif;">
-            <strong style="font-size:13px;">${spot.name}</strong><br/>
-            <span style="font-size:11px; color:#64748b;">${spot.category || 'Cultural Spot'}</span><br/>
-            <span style="font-weight:700; color:${badgeColor}; font-size:11px;">Predicted Crowd: ${score}%</span>
+        marker.setPopup(new PopupClass({ offset: 12, closeButton: false }).setHTML(`
+          <div style="color:#0f172a; padding:3px; font-family:sans-serif;">
+            <strong style="font-size:12px;">${spot.name}</strong><br/>
+            <span style="font-size:10px; color:#64748b;">${spot.category || 'Tourist Spot'}</span><br/>
+            <span style="font-weight:700; color:${dotColor}; font-size:11px;">ML Score: ${score}%</span>
           </div>
         `));
       }
@@ -357,7 +387,7 @@
   }
 
   /**
-   * Draws Turn-by-Turn Road Route on Map
+   * Draws OSRM Navigation Road Route
    */
   function drawRoute(origin, destination, routeCoords) {
     if (!map || !origin || !destination) return;
@@ -377,17 +407,15 @@
     if (!oLng || !oLat || !dLng || !dLat) return;
 
     let coordinates = [];
-
     if (routeCoords && Array.isArray(routeCoords) && routeCoords.length >= 2) {
       coordinates = routeCoords;
     } else {
-      // Smooth 10-point arc
       for (let i = 0; i <= 10; i++) {
         const t = i / 10.0;
         const curLng = oLng + (dLng - oLng) * t;
         const curLat = oLat + (dLat - oLat) * t;
-        const arcOffset = Math.sin(t * Math.PI) * 0.005;
-        coordinates.push([curLng + arcOffset, curLat + arcOffset * 0.5]);
+        const offset = Math.sin(t * Math.PI) * 0.004;
+        coordinates.push([curLng + offset, curLat + offset * 0.5]);
       }
     }
 
@@ -405,7 +433,6 @@
         map.getSource('route-source').setData(routeGeoJSON);
       }
 
-      // Smoothly fly and adjust bounds to frame both points
       fitBounds([
         { lat: oLat, lng: oLng },
         { lat: dLat, lng: dLng }
@@ -436,24 +463,24 @@
     try {
       map.fitBounds(
         [[minLng - 0.02, minLat - 0.02], [maxLng + 0.02, maxLat + 0.02]],
-        { padding: 70, pitch: currentPitch, duration: 1000 }
+        { padding: 60, pitch: currentPitch, duration: 800 }
       );
     } catch (e) {
-      console.warn('fitBounds info:', e.message);
+      console.warn('fitBounds warning:', e.message);
     }
   }
 
   function setCenter(lat, lon, zoom) {
     currentCenter = [lon, lat];
     if (map) {
-      map.flyTo({ center: [lon, lat], zoom: zoom || 13, pitch: currentPitch, duration: 1000 });
+      map.flyTo({ center: [lon, lat], zoom: zoom || 13, pitch: currentPitch, duration: 800 });
     }
   }
 
   function toggle3D() {
     if (!map) return;
     currentPitch = currentPitch === 70 ? 0 : 70;
-    map.easeTo({ pitch: currentPitch, duration: 800 });
+    map.easeTo({ pitch: currentPitch, duration: 600 });
   }
 
   function toggleHeatmap() {
@@ -466,12 +493,13 @@
   window.GeoDivertMap = {
     initMap: initMap,
     setCenter: setCenter,
+    setUserLocation: setUserLocation,
     updateHeatmap: updateHeatmap,
     renderMarkers: renderMarkers,
     drawRoute: drawRoute,
     resetBounds: function () {
       if (map) {
-        map.flyTo({ center: currentCenter, zoom: 12.5, pitch: currentPitch, duration: 900 });
+        map.flyTo({ center: currentCenter, zoom: 12.8, pitch: currentPitch, duration: 700 });
       }
     },
     toggle3D: toggle3D,

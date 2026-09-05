@@ -30,15 +30,15 @@ start "GeoDivert FastAPI Backend" cmd /k "python -m uvicorn backend.main:app --h
 :: Step 4: Pause briefly for backend startup
 timeout /t 3 /nobreak >nul
 
-:: Step 5: Launch 3D MapLibre Frontend UI in Default Web Browser
-echo [2/2] Launching GeoDivert 3D Interactive Map UI...
-start "" "%~dp0frontend\index.html"
+:: Step 5: Launch 3D MapLibre Frontend UI at Local Web Server URL
+echo [2/2] Launching GeoDivert 3D Interactive Map UI on http://127.0.0.1:8000 ...
+start "" "http://127.0.0.1:8000"
 
 echo.
 echo =========================================================================
 echo GeoDivert is up and running!
-echo  - Frontend UI: Opened in your browser (%~dp0frontend\index.html)
-echo  - FastAPI Backend: Running at http://127.0.0.1:8000
+echo  - Frontend Web UI: http://127.0.0.1:8000
+echo  - FastAPI Backend API: http://127.0.0.1:8000/api/health
 echo  - Interactive Swagger Docs: http://127.0.0.1:8000/docs
 echo.
 echo Keep this terminal window open during your hackathon presentation.

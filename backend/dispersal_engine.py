@@ -32,35 +32,35 @@ def run_spatial_dispersal(
     day_of_week: int = 6,
     user_preferences: List[str] = None,
     query_name: str = None,
-    alpha: float = 0.3,
-    beta: float = 0.5,
-    gamma: float = 0.2,
+    alpha: float = 0.25,
+    beta: float = 0.55,
+    gamma: float = 0.20,
     delta: float = 0.35
 ) -> Dict[str, Any]:
     """
-    Executes the GeoDivert Spatial Dispersal Algorithm for ANY given location (Amravati, Nagpur, Pune, etc.)
+    Executes the GeoDivert Spatial Dispersal Algorithm for Amravati and surrounding regions
     """
     if user_preferences is None:
         user_preferences = []
 
     user_pref_set = set(p.lower() for p in user_preferences)
 
-    # If a location search string is provided, resolve coordinates
+    # Resolve coordinates if a named search was provided
     resolved_name = query_name or "My Location"
-    if query_name and query_name.lower() not in ["origin point", "my current location", "my gps location", "selected location"]:
+    if query_name and query_name.lower() not in ["origin point", "my current location", "my gps location", "selected location", "my location (gps)"]:
         geocoded = geocode_location(query_name)
         if geocoded:
             origin_lat = geocoded["lat"]
             origin_lon = geocoded["lon"]
             resolved_name = geocoded.get("display_name", query_name)
 
-    # 1. Predict origin crowd density dynamically via ML DecisionTree model.pkl
+    # 1. Predict origin crowd score dynamically via ML DecisionTree model.pkl
     raw_origin_crowd = predict_crowd_score(origin_lat, origin_lon, hour, day_of_week)
     origin_crowd = round(raw_origin_crowd, 1)
     origin_status = "HIGH" if origin_crowd >= 70 else "MEDIUM" if origin_crowd >= 40 else "LOW"
 
-    # 2. Fetch candidate cultural landmarks from OpenTripMap / regional database
-    candidate_pois = fetch_cultural_pois(origin_lat, origin_lon, radius_meters=35000)
+    # 2. Fetch candidate verified tourist destinations
+    candidate_pois = fetch_cultural_pois(origin_lat, origin_lon, radius_meters=45000)
 
     evaluated_candidates = []
 
@@ -68,45 +68,31 @@ def run_spatial_dispersal(
         p_lat = poi.get("lat", origin_lat)
         p_lon = poi.get("lon", origin_lon)
         
-        # Calculate real geographic distance (km)
+        # Real geographic distance (km)
         dist_km = calculate_distance(origin_lat, origin_lon, p_lat, p_lon)
         
-        # Skip spot if it is virtually identical to origin (dist < 0.2km)
-        if dist_km < 0.2 and len(candidate_pois) > 1:
-            continue
+        # Dynamic ML crowd score for this specific candidate spot at (hour, day)
+        c_i = round(predict_crowd_score(p_lat, p_lon, hour, day_of_week), 1)
         
-        # Dynamic ML crowd prediction for the candidate spot at this exact hour & day
-        base_ml = predict_crowd_score(p_lat, p_lon, hour, day_of_week)
-        
-        # Serene cultural corridors & botanical reserves receive calm capacity multiplier
-        is_serene = (
-            poi.get("preference_category") in ["nature", "sacred", "gardens", "culture"] 
-            or "lake" in poi.get("name", "").lower() 
-            or "talao" in poi.get("name", "").lower() 
-            or "garden" in poi.get("name", "").lower()
-            or "park" in poi.get("name", "").lower()
-            or "waterfall" in poi.get("name", "").lower()
-        )
-        
-        calm_multiplier = 0.35 if is_serene else 0.75
-        c_i = round(min(100.0, max(8.0, base_ml * calm_multiplier)), 1)
-        
-        v_i = poi.get("cultural_value", 0.85)
+        v_i = poi.get("cultural_value", 0.90)
         
         # Preference matching bonus
         poi_cat = poi.get("preference_category", "").lower()
         pref_match = 1.0 if (poi_cat in user_pref_set) else 0.0
 
-        # Spatial Dispersal Formula: min F(x) = alpha * (dist/25) + beta * (C(i)/100) - gamma * V(i) - delta * pref_match
-        normalized_dist = min(dist_km / 25.0, 1.0)
+        # Spatial Dispersal Objective Function: min F(x) = alpha * (dist/25) + beta * (C(i)/100) - gamma * V(i) - delta * pref_match
+        normalized_dist = min(dist_km / 30.0, 1.0)
         normalized_crowd = c_i / 100.0
         
-        dispersal_score = (alpha * normalized_dist) + (beta * normalized_crowd) - (gamma * v_i) - (delta * pref_match)
+        # If the candidate spot is the exact origin (dist < 0.2km), penalize to encourage redistribution
+        same_origin_penalty = 1.5 if dist_km < 0.2 else 0.0
+        
+        dispersal_score = (alpha * normalized_dist) + (beta * normalized_crowd) - (gamma * v_i) - (delta * pref_match) + same_origin_penalty
 
         evaluated_candidates.append({
             "id": poi.get("xid", f"spot_{len(evaluated_candidates)}"),
             "name": poi.get("name"),
-            "category": poi.get("category", "Cultural Landmark"),
+            "category": poi.get("category", "Tourist Attraction"),
             "lat": p_lat,
             "lng": p_lon,
             "crowd_score": c_i,
@@ -116,17 +102,17 @@ def run_spatial_dispersal(
             "preference_category": poi_cat,
             "pref_match": bool(pref_match),
             "dispersal_score": round(dispersal_score, 4),
-            "description": poi.get("description", "A verified serene cultural landmark.")
+            "description": poi.get("description", "A verified serene cultural landmark in Amravati.")
         })
 
     # Sort candidates by lowest objective dispersal score
     evaluated_candidates.sort(key=lambda x: x["dispersal_score"])
 
-    # Best recommendation
+    # Best recommendation (must be distinct from origin)
     best_candidate = evaluated_candidates[0] if evaluated_candidates else None
     top_3_alternatives = evaluated_candidates[:3]
 
-    # 3. Secondary Search: Pair Independent Local Merchant within 800m-1.5km
+    # 3. Secondary Search: Pair Independent Local Merchant
     paired_merchant = {}
     if best_candidate:
         paired_merchant = fetch_paired_local_merchant(best_candidate["lat"], best_candidate["lng"], radius_meters=1500)
@@ -161,7 +147,7 @@ def run_spatial_dispersal(
             "longitude": origin_lon,
             "crowd_score": origin_crowd,
             "crowd_status": origin_status,
-            "reroute_recommended": origin_crowd >= 60
+            "reroute_recommended": origin_crowd >= 50
         },
         "recommended_alternative": best_candidate,
         "top_3_alternatives": top_3_alternatives,

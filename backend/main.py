@@ -20,11 +20,13 @@ try:
     from backend.dispersal_engine import run_spatial_dispersal
     from backend.opentripmap import fetch_cultural_pois, fetch_paired_local_merchant
     from backend.gemini_service import generate_tour_guide_story
+    from backend.config import GEMINI_API_KEY, MAPTILER_API_KEY, OPENTRIPMAP_API_KEY, OPENAI_API_KEY
 except ImportError:
     from predict import predict_crowd_score
     from dispersal_engine import run_spatial_dispersal
     from opentripmap import fetch_cultural_pois, fetch_paired_local_merchant
     from gemini_service import generate_tour_guide_story
+    from config import GEMINI_API_KEY, MAPTILER_API_KEY, OPENTRIPMAP_API_KEY, OPENAI_API_KEY
 
 app = FastAPI(
     title="GeoDivert Tourism Crowd Redistribution Platform",
@@ -50,6 +52,7 @@ class DispersalRequest(BaseModel):
     day_of_week: Optional[int] = 6
     preferences: Optional[List[str]] = []
     selected_spot_name: Optional[str] = None
+    gemini_api_key: Optional[str] = None
 
 class PredictionRequest(BaseModel):
     latitude: float = 20.9320
@@ -63,10 +66,23 @@ class StoryRequest(BaseModel):
     city: str = "Amravati"
     description: str
     merchant: Optional[dict] = None
+    gemini_api_key: Optional[str] = None
 
-# 1. ROOT ROUTE: Directly serve index.html for web browser access
+# 1. ROOT ROUTE: Serve cinematic landing page first
 @app.get("/")
-def serve_index_page():
+def serve_landing_page():
+    landing_path = os.path.join(frontend_dir, "landing.html")
+    if os.path.exists(landing_path):
+        return FileResponse(landing_path)
+    # Fallback to map if landing missing
+    index_path = os.path.join(frontend_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"status": "online", "city": "Amravati, Maharashtra"}
+
+# 2. MAP ROUTE: Serves the full 3D MapLibre application
+@app.get("/map")
+def serve_map_page():
     index_path = os.path.join(frontend_dir, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
@@ -79,6 +95,19 @@ def get_health():
         "service": "GeoDivert FastAPI Engine",
         "ml_model": "DecisionTreeRegressor (Amravati Trained)",
         "city": "Amravati, Maharashtra"
+    }
+
+@app.get("/api/config")
+def get_api_config():
+    """
+    Returns API configuration status for Gemini, MapTiler, OpenTripMap & OpenAI
+    """
+    return {
+        "gemini_configured": bool(GEMINI_API_KEY and GEMINI_API_KEY.strip()),
+        "maptiler_configured": bool(MAPTILER_API_KEY and MAPTILER_API_KEY.strip()),
+        "opentripmap_configured": bool(OPENTRIPMAP_API_KEY and OPENTRIPMAP_API_KEY.strip()),
+        "openai_configured": bool(OPENAI_API_KEY and OPENAI_API_KEY.strip()),
+        "maptiler_key_default": MAPTILER_API_KEY if MAPTILER_API_KEY else ""
     }
 
 @app.get("/api/spots")
@@ -131,6 +160,18 @@ def recommend_dispersal(request: DispersalRequest):
         user_preferences=request.preferences or [],
         query_name=request.selected_spot_name
     )
+    # If custom gemini key provided in request, generate custom narrative
+    if request.gemini_api_key and result and result.get("gemini_story"):
+        rec = result.get("recommendation", {})
+        custom_story = generate_tour_guide_story(
+            destination_name=rec.get("name", "Hidden Gem"),
+            category=rec.get("category", "sanctuary"),
+            city="Amravati",
+            description=rec.get("description", ""),
+            merchant=result.get("merchant", {}),
+            custom_api_key=request.gemini_api_key
+        )
+        result["gemini_story"] = custom_story
     return result
 
 @app.post("/api/predict-crowd")
@@ -169,7 +210,8 @@ def generate_story_endpoint(request: StoryRequest):
         category=request.category,
         city=request.city,
         description=request.description,
-        merchant=merchant
+        merchant=merchant,
+        custom_api_key=request.gemini_api_key
     )
     return {"story": story}
 

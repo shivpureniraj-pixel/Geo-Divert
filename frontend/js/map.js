@@ -6,7 +6,9 @@
 (function () {
   'use strict';
 
-  const MAPTILER_KEY = '1F9CGOeQFYlGPknSOSpJ';
+  function getMaptilerKey() {
+    return (localStorage.getItem('geodivert_maptiler_key') || window.GEODIVERT_MAPTILER_KEY || '1F9CGOeQFYlGPknSOSpJ').trim();
+  }
 
   let map = null;
   let isMapLoaded = false;
@@ -25,11 +27,13 @@
       userCoordinates = [initialCenter.lon, initialCenter.lat];
     }
 
+    const activeMaptilerKey = getMaptilerKey();
+
     if (window.maptilersdk) {
-      window.maptilersdk.config.apiKey = MAPTILER_KEY;
+      window.maptilersdk.config.apiKey = activeMaptilerKey;
     }
 
-    const styleUrl = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${MAPTILER_KEY}`;
+    const styleUrl = `https://api.maptiler.com/maps/streets-v2-dark/style.json?key=${activeMaptilerKey}`;
 
     try {
       const MapClass = (window.maptilersdk && window.maptilersdk.Map) ? window.maptilersdk.Map : (window.maplibregl ? maplibregl.Map : null);
@@ -93,7 +97,7 @@
       if (!map.getSource('maptiler-dem')) {
         map.addSource('maptiler-dem', {
           type: 'raster-dem',
-          url: `https://api.maptiler.com/tiles/terrain-dem/tiles.json?key=${MAPTILER_KEY}`,
+          url: `https://api.maptiler.com/tiles/terrain-dem/tiles.json?key=${getMaptilerKey()}`,
           tileSize: 512,
           maxzoom: 14
         });

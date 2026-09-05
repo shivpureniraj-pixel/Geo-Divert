@@ -1,5 +1,5 @@
 """
-Generative AI Engine - Gemini 1.5 Flash Integration for GeoDivert
+Generative AI Engine - Gemini 1.5/2.5 Flash Integration for GeoDivert
 Generates interactive 60-second conversational tour guide stories with local merchant pairing
 """
 
@@ -14,17 +14,26 @@ except ImportError:
     except ImportError:
         GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-def generate_tour_guide_story(destination_name: str, category: str, city: str, description: str, merchant: dict) -> str:
+def generate_tour_guide_story(
+    destination_name: str, 
+    category: str, 
+    city: str, 
+    description: str, 
+    merchant: dict,
+    custom_api_key: str = None
+) -> str:
     """
-    Calls Gemini 1.5 Flash to write a concise, conversational 60-second tour guide narrative.
-    Includes rules from Blueprint Section 6:
-      - Fun, engaging tour guide persona
+    Calls Gemini 1.5 / 2.5 Flash to write a concise, conversational 60-second tour guide narrative.
+    Supports user-provided custom API key or system environment key.
+    Includes rules:
+      - Warm, engaging local tour guide persona
       - Focuses on 1 cool fact
       - Ends by recommending the paired local family-owned merchant
       - Strict constraint: No asterisks, markdown symbols, or bullet points
     """
-    merchant_name = merchant.get("name", "the neighborhood bakery")
-    merchant_desc = merchant.get("description", "local handmade snacks and fresh tea")
+    api_key = custom_api_key.strip() if (custom_api_key and custom_api_key.strip()) else GEMINI_API_KEY
+    merchant_name = merchant.get("name", "the neighborhood tea house") if merchant else "the neighborhood tea house"
+    merchant_desc = merchant.get("description", "local handmade snacks and fresh tea") if merchant else "local handmade snacks and fresh tea"
 
     prompt = f"""
 You are an expert, lively, and warm local tour guide in {city}, India for the GeoDivert tourism platform.
@@ -43,11 +52,11 @@ STRICT FORMATTING RULES:
 - Do NOT use markdown symbols, do NOT use asterisks, bold text, hashes, or bullet points.
 """
 
-    if GEMINI_API_KEY:
+    if api_key:
         # Try Google GenAI SDK (v1 / v2)
         try:
             from google import genai
-            client = genai.Client(api_key=GEMINI_API_KEY)
+            client = genai.Client(api_key=api_key)
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt
@@ -60,11 +69,11 @@ STRICT FORMATTING RULES:
 
         # Try direct REST endpoint for Gemini API
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}]
             }
-            res = requests.post(url, json=payload, timeout=2.5)
+            res = requests.post(url, json=payload, timeout=3.5)
             if res.status_code == 200:
                 data = res.json()
                 candidates = data.get("candidates", [])

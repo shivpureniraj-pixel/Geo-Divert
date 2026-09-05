@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GeoDivert - AI Tourism Crowd Redistribution & 3D Spatial Engine</title>
+<meta name="description" content="GeoDivert uses real-time ML crowd prediction and 3D spatial dispersal to intelligently guide tourists away from congested Amravati hotspots to serene cultural sanctuaries."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/css/landing.css"/>
+</head>
+<body>
+
+<!-- Fluid Cursor Follower -->
+<div id="cursor-glow"></div>
+
+<!-- Background Particle Canvas & Tech Grid Layers -->
+<canvas id="pc"></canvas>
+<div class="go"></div>
+<div class="sl"></div>
+<div class="stl" id="stl"></div>
+
+<!-- 3D Spatial Engine Loading Scanner Overlay -->
+<div id="to">
+  <div class="ls"></div>
+  <div class="lt">Initializing 3D Spatial Engine...</div>
+</div>
+
+<!-- Navigation Bar -->
+<nav>
+  <a href="#" class="nb">
+    <div class="nlr">&#x1F9ED;</div>
+    <span class="nw">GeoDivert</span>
+    <span class="nbg">Amravati AI</span>
+  </a>
+  <div class="nav-actions">
+    <button class="sfx-toggle" id="landing-api-key-btn" onclick="openLandingApiModal()" style="margin-right:6px;" title="Configure API Keys for GitHub / Live Services">
+      <span style="font-size:0.85rem;">🔑 API Keys</span>
+    </button>
+    <button class="sfx-toggle" id="sfx-btn" onclick="toggleSfx()">
+      <span class="sfx-dot"></span>
+      <span id="sfx-label">SFX: ON</span>
+    </button>
+    <button class="nc" onclick="launchApp()">&#x1F5FA; Open 3D Map</button>
+  </div>
+</nav>
+
+<!-- HERO SECTION: Split Layout with 3D Holographic Globe Model -->
+<section class="hero" id="home">
+  <div class="hero-content">
+    <p class="ho"><span class="hod"></span>AI Spatial Dispersal &middot; Amravati Tourism</p>
+    <h1 class="hh">
+      <span class="l1">Escape the Crowd.</span>
+      <span class="l2"><span id="tw">Discover Serenity.</span><span class="tc"></span></span>
+    </h1>
+    <p class="hs">GeoDivert combines <strong>real-time ML crowd intelligence</strong> and <strong>multi-objective spatial routing</strong> to guide travelers away from congested Amravati hotspots into tranquil, undiscovered cultural sanctuaries nearby.</p>
+    
+    <div class="hcr">
+      <button class="bp" onclick="addRipple(event,this);setTimeout(launchApp,400)">&#x1F680; Launch 3D Map</button>
+      <button class="bg" onclick="document.getElementById('studio').scrollIntoView({behavior:'smooth'})">&#x2699; Explore Interactive Studio</button>
+    </div>
+
+    <!-- Quick Animated Telemetry Metrics -->
+    <div class="hero-stats-row">
+      <div class="hs-item">
+        <span class="hs-val" data-counter="91.4" data-suffix="%" data-decimals="1">0%</span>
+        <span class="hs-lbl">ML Model R&sup2; Accuracy</span>
+      </div>
+      <div class="hs-item">
+        <span class="hs-val" data-counter="3000" data-suffix="+" data-decimals="0">0</span>
+        <span class="hs-lbl">Calibration Points</span>
+      </div>
+      <div class="hs-item">
+        <span class="hs-val" data-counter="74" data-prefix="&darr; " data-suffix="%" data-decimals="0">0%</span>
+        <span class="hs-lbl">Peak Crowd Diverted</span>
+      </div>
+      <div class="hs-item">
+        <span class="hs-val" data-counter="115" data-prefix="< " data-suffix="ms" data-decimals="0">0ms</span>
+        <span class="hs-lbl">Solver Latency</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3D Holographic Globe Viewport -->
+  <div class="globe-viewport-container">
+    <div class="globe-frame">
+      <div class="globe-hud-top">
+        <div class="hud-chip"><span class="dot-live"></span>3D DIGITAL TWIN</div>
+        <div class="hud-chip">AMRAVATI 20.93&deg; N</div>
+      </div>
+      <canvas id="globe3d-canvas"></canvas>
+      <div class="globe-hud-bottom">
+        <div class="globe-telemetry">
+          <span id="hud-yaw">YAW: 0&deg;</span> &middot; <span id="hud-pitch">PITCH: 0&deg;</span>
+        </div>
+        <div class="globe-controls">
+          <button class="hud-btn" onclick="targetAmravati()">&#x1F3AF; TARGET AMR</button>
+          <button class="hud-btn" id="btn-spin-toggle" onclick="toggleSpin()">PAUSE SPIN</button>
+          <button class="hud-btn" id="btn-arcs-toggle" onclick="toggleArcs()">FLOW ARCS</button>
+        </div>
+      </div>
+    </div>
+    <p class="globe-caption">&#x2728; Drag to rotate 3D Earth &middot; Scroll to zoom &middot; Glowing arcs depict live tourist dispersal</p>
+  </div>
+</section>
+
+<!-- ==================== INTERACTIVE AI FEATURE STUDIO ==================== -->
+<section class="studio-section" id="studio">
+  <span class="sl2">Interactive AI Feature Studio</span>
+  <h2 class="st2">Experience All Core Systems in <em>Motion</em></h2>
+  <p class="s-sub">Switch between live interactive models below to experience crowd vector flows, 24-hour ML prediction curves, 3D terrain projections, and AI cultural voice narration.</p>
+
+  <!-- Studio Navigation Tabs (Segmented Control) -->
+  <div class="studio-tabs-row">
+    <button class="studio-tab active" onclick="switchStudioTab('dispersal', this)">&#x1F6F0; Live Crowd Dispersal Flow</button>
+    <button class="studio-tab" onclick="switchStudioTab('curve', this)">&#x1F9E0; 24h ML Prediction Curve</button>
+    <button class="studio-tab" onclick="switchStudioTab('terrain', this)">&#x1F5FA; 3D Terrain &amp; Vector Geometry</button>
+    <button class="studio-tab" onclick="switchStudioTab('gemini', this)">&#x1F399; Gemini AI Voice &amp; Merchant</button>
+  </div>
+
+  <!-- Studio Panels Stage -->
+  <div class="studio-stage">
+
+    <!-- PANEL 1: CROWD DISPERSAL FLOW -->
+    <div class="studio-panel active" id="panel-dispersal">
+      <div class="p1-grid">
+        <div class="p1-controls">
+          <div class="p1-header">
+            <h3>Dynamic Crowd Redistribution Model</h3>
+            <p>Select a real-world surge scenario or scrub time-of-day to watch the flow vectors re-route tourists in real time.</p>
+          </div>
+
+          <!-- Scenario Cards Grid -->
+          <div class="scenarios-grid">
+            <div class="sc-card active" onclick="selectScenario('darshan', this)">
+              <div class="sc-card-top">
+                <span>&#x1F64F; Mandir Darshan</span>
+                <span class="tag-choked">96% CHOKED</span>
+              </div>
+              <span class="sc-card-title">Shri Ambadevi Temple</span>
+            </div>
+
+            <div class="sc-card" onclick="selectScenario('weekend', this)">
+              <div class="sc-card-top">
+                <span>&#x2615; Hill Station</span>
+                <span class="tag-choked">94% CHOKED</span>
+              </div>
+              <span class="sc-card-title">Chikhaldara Fort</span>
+            </div>
+
+            <div class="sc-card" onclick="selectScenario('monsoon', this)">
+              <div class="sc-card-top">
+                <span>&#x1F327;&#xFE0F; Monsoon Rush</span>
+                <span class="tag-choked">88% SURGE</span>
+              </div>
+              <span class="sc-card-title">Forest Waterfalls</span>
+            </div>
+
+            <div class="sc-card" onclick="selectScenario('offpeak', this)">
+              <div class="sc-card-top">
+                <span>&#x1F33F; Serene Off-Peak</span>
+                <span class="tag-clear">14% CLEAR</span>
+              </div>
+              <span class="sc-card-title">Early Morning Grid</span>
+            </div>
+          </div>
+
+          <!-- Time Scrubber -->
+          <div class="time-scrub-box">
+            <div class="time-scrub-head">
+              <span>Time of Day</span>
+              <span id="scrub-hour-disp">10:00 (10 AM)</span>
+            </div>
+            <input type="range" class="scrub-range" min="6" max="22" value="10" oninput="onHourScrub(this.value)"/>
+          </div>
+
+          <!-- Target Recommendation Summary -->
+          <div class="p1-summary-box">
+            <div class="p1-summary-text">
+              <h4 id="p1-target-name">Wadali Talao &amp; Eco Park</h4>
+              <p id="p1-target-meta">&darr; -75.3% Congestion Drop &middot; 4.2 km (11 mins)</p>
+            </div>
+            <button class="p1-route-btn" onclick="launchApp()">&#x1F5FA; Route in 3D &rarr;</button>
+          </div>
+        </div>
+
+        <!-- Dispersal Canvas Display -->
+        <div class="p1-canvas-wrap">
+          <div class="canvas-hud-overlay">
+            <div class="canvas-pill-badge"><span class="dot-live"></span>DISPERSAL ACTIVE</div>
+            <div class="canvas-pill-badge" id="hud-flow-rate">FLOW: 840 tourists/hr</div>
+          </div>
+          <canvas id="dispersal-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL 2: 24-HOUR ML CROWD PREDICTION CURVE -->
+    <div class="studio-panel" id="panel-curve">
+      <div class="p2-container">
+        <div class="p2-top-bar">
+          <div class="p2-spots-row">
+            <button class="p2-spot-btn active" onclick="selectCurveSpot('ambadevi', this)">&#x1F64F; Ambadevi Temple</button>
+            <button class="p2-spot-btn" onclick="selectCurveSpot('chikhaldara', this)">&#x2615; Chikhaldara Fort</button>
+            <button class="p2-spot-btn" onclick="selectCurveSpot('wadali', this)">&#x1F30A; Wadali Talao Sanctuary</button>
+          </div>
+          <div class="p2-hud-metrics">
+            <div class="p2-metric"><span>ML Engine:</span> <strong>DecisionTreeRegressor</strong></div>
+            <div class="p2-metric"><span>Accuracy:</span> <strong>R&sup2; = 0.91</strong></div>
+            <div class="p2-metric"><span>Horizon:</span> <strong>24-Hour Continuous</strong></div>
+          </div>
+        </div>
+
+        <!-- Curve Canvas Graph -->
+        <div class="curve-canvas-wrap">
+          <canvas id="curve-canvas"></canvas>
+        </div>
+        <p style="font-size:0.78rem;color:var(--muted);text-align:center">&#x2728; Move your cursor across the chart to scrub the 24-hour timeline and inspect live ML crowd predictions.</p>
+      </div>
+    </div>
+
+    <!-- PANEL 3: 3D TERRAIN & VECTOR GEOMETRY -->
+    <div class="studio-panel" id="panel-terrain">
+      <div class="p3-container">
+        <div class="p3-info-pane">
+          <div class="p1-header">
+            <h3>3D Elevation &amp; Road Vector Engine</h3>
+            <p>Interactive perspective terrain projection paired with turn-by-turn road network geometry.</p>
+          </div>
+
+          <div class="p3-formula-box">
+            <h5>Multi-Objective Dispersal Formula</h5>
+            <div class="p3-math">min F(x) = &alpha;&middot;d + &beta;&middot;C &minus; &gamma;&middot;V &minus; &delta;&middot;P</div>
+            <p style="font-size:0.78rem;color:#94a3b8;margin-top:6px">Minimizes travel distance and congestion while maximizing cultural significance and user travel preference.</p>
+          </div>
+
+          <button class="p1-route-btn" style="align-self:flex-start" onclick="launchApp()">&#x1F5FA; Enter Full-Screen 3D Map &rarr;</button>
+        </div>
+
+        <!-- Terrain Canvas -->
+        <div class="terrain-canvas-wrap">
+          <canvas id="terrain-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL 4: GEMINI AI VOICE & LOCAL MERCHANT -->
+    <div class="studio-panel" id="panel-gemini">
+      <div class="p4-container">
+        <!-- Audio Narration Card -->
+        <div class="p4-audio-card">
+          <div class="p1-header">
+            <h3>Gemini 1.5 Flash AI Cultural Guide</h3>
+            <p>Real-time synthesized audio tour narration for every destination.</p>
+          </div>
+
+          <!-- Animated Spectrum Canvas -->
+          <div class="audio-spectrum-canvas-wrap">
+            <canvas id="audio-eq-canvas"></canvas>
+          </div>
+
+          <button class="audio-play-btn" onclick="playGeminiStory()">
+            &#x25B6; <span id="audio-btn-label">Play Voice Story</span>
+          </button>
+
+          <p class="p4-story-text">"Welcome to Wadali Talao, Amravati. Created in 1889 as a serene freshwater reservoir, this sanctuary offers tranquil lake promenades, shaded botanical gazebos, and clean fresh air far away from crowded temple queues."</p>
+        </div>
+
+        <!-- Local Merchant Partner Voucher -->
+        <div class="p4-merchant-card">
+          <div class="p4-merchant-tag">&#x1F35C; Paired Local Merchant</div>
+          <h4 style="font-family:var(--font-d);font-size:1.2rem;font-weight:800;color:var(--white)">Lakeview Bamboo Cafe &amp; Heritage Bakery</h4>
+          <p style="font-size:0.86rem;color:#94a3b8;line-height:1.6">GeoDivert partners with local Amravati artisans to support sustainable small businesses near tranquil sanctuaries.</p>
+          <div class="p4-voucher-badge">&#x1F39F; 15% OFF WITH GEODIVERT PASS</div>
+          <p style="font-size:0.74rem;color:#64748b">Present this digital voucher at the counter for complimentary herbal tea and bakery discounts.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- CORE INTELLIGENCE FEATURES: 3D Perspective Tilt Cards -->
+<section class="features" id="features">
+  <span class="sl2">Core Intelligence Engine</span>
+  <h2 class="st2">Four Systems Working <em>Together</em></h2>
+  <div class="fg">
+    <div class="fc" data-delay="0">
+      <div class="fi">&#x1F9E0;</div>
+      <span class="ftg">ML Prediction</span>
+      <h3 class="ft">DecisionTree Crowd Intelligence</h3>
+      <p class="fd">Scikit-Learn DecisionTreeRegressor trained on 3,000 synthetic Amravati tourist observations, predicting real-time crowd pressure by time-of-day and weekday patterns.</p>
+      <div class="fm">
+        <span data-counter="0.91" data-prefix="R&sup2; = " data-decimals="2">0</span>
+        <span class="ml">/ 3,000 samples</span>
+      </div>
+    </div>
+    <div class="fc" data-delay="100">
+      <div class="fi">&#x1F5FA;</div>
+      <span class="ftg">Spatial Engine</span>
+      <h3 class="ft">Multi-Objective Dispersal Formula</h3>
+      <p class="fd">Spatial solver minimizing travel distance and crowd density while maximizing cultural heritage value and tourist preferences to select the optimal alternative.</p>
+      <div class="fm">
+        <span data-counter="74" data-prefix="&darr; " data-suffix="%" data-decimals="0">0%</span>
+        <span class="ml">avg. crowd reduction</span>
+      </div>
+    </div>
+    <div class="fc" data-delay="200">
+      <div class="fi">&#x1F30D;</div>
+      <span class="ftg">3D Visualization</span>
+      <h3 class="ft">MapLibre 3D Terrain Engine</h3>
+      <p class="fd">Full-screen dark 3D terrain canvas with turn-by-turn OSRM road coordinates, live crowd heatmap overlays, and dynamic color-coded density beacons.</p>
+      <div class="fm">
+        <span data-counter="70" data-suffix="&deg;" data-decimals="0">0&deg;</span>
+        <span class="ml">pitch &middot; DEM terrain</span>
+      </div>
+    </div>
+    <div class="fc" data-delay="300">
+      <div class="fi">&#x1F399;</div>
+      <span class="ftg">Gemini 1.5 Flash</span>
+      <h3 class="ft">AI Voice Tour Guide Narrative</h3>
+      <p class="fd">Gemini 1.5 Flash generates a culturally rich story for each recommended destination, narrated directly in-browser using the native Web Speech API.</p>
+      <div class="fm">Live<span class="ml">narrative per sanctuary</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- SYSTEM PIPELINE -->
+<section class="hiw" id="pipeline">
+  <span class="sl2">System Pipeline</span>
+  <h2 class="st2">From Your GPS to <em>Serene Discovery</em></h2>
+  <div class="pl">
+    <div class="ps" data-delay="0">
+      <div class="sn">01</div>
+      <div class="sc">
+        <p class="slb">GPS &amp; Preference Input</p>
+        <h3 class="stt">Your Real Location is Captured</h3>
+        <p class="sd">Browser Geolocation API fetches your live GPS coordinates with graceful fallback to Amravati city center. Preferences bias the dispersal formula.</p>
+        <span class="sdt"><span class="dd"></span>navigator.geolocation &middot; permission-gated</span>
+      </div>
+    </div>
+    <div class="ps" data-delay="120">
+      <div class="sn">02</div>
+      <div class="sc">
+        <p class="slb">ML Crowd Assessment</p>
+        <h3 class="stt">Crowd Density Predicted in Real Time</h3>
+        <p class="sd">FastAPI transmits coordinates and time-of-day to the Scikit-Learn DecisionTreeRegressor model, yielding an instant 0-100 crowd score for all monitored tourist spots.</p>
+        <span class="sdt"><span class="dd"></span>R&sup2; 0.91 &middot; Scikit-Learn</span>
+      </div>
+    </div>
+    <div class="ps" data-delay="240">
+      <div class="sn">03</div>
+      <div class="sc">
+        <p class="slb">Spatial Dispersal Formula</p>
+        <h3 class="stt">Optimal Sanctuary Selected</h3>
+        <p class="sd">Multi-objective optimizer scores all candidate spots: minimizing distance and crowd, maximizing cultural weight and preference alignment. Best alternative is selected.</p>
+        <span class="sdt"><span class="dd"></span>min F(x) = &alpha;&middot;d + &beta;&middot;C &minus; &gamma;&middot;V &minus; &delta;&middot;P</span>
+      </div>
+    </div>
+    <div class="ps" data-delay="360">
+      <div class="sn">04</div>
+      <div class="sc">
+        <p class="slb">3D Render &amp; Gemini Story</p>
+        <h3 class="stt">Route Shown. Story Told.</h3>
+        <p class="sd">OSRM road routing traces a glowing turn-by-turn path on the 3D MapLibre terrain canvas. Gemini 1.5 Flash narrates the sanctuary's history while highlighting local artisan shops.</p>
+        <span class="sdt"><span class="dd"></span>MapLibre 3D &middot; OSRM &middot; Gemini Flash</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AMRAVATI TOURIST GRID -->
+<section class="locs" id="locations">
+  <span class="sl2">Amravati Tourist Grid</span>
+  <h2 class="st2">Live <em>Crowd Monitoring</em></h2>
+  <p class="lc-hint">&#x2728; Click any location card to inspect live telemetry, peak hours, and local merchant voucher</p>
+  <div class="lc">
+    <div class="lcard" data-delay="0" onclick="openSpotModal('ambadevi')">
+      <div class="ldr rh">&#x1F64F;</div>
+      <p class="ln">Shri Ambadevi &amp; Ekvira Mandir</p>
+      <p class="lcat">Sacred Heritage Temple</p>
+      <div class="lsr"><span class="ls2 ssh">95.4%</span><span class="lb bsh">HIGH</span></div>
+    </div>
+    <div class="lcard" data-delay="80" onclick="openSpotModal('wadali')">
+      <div class="ldr rs">&#x1F30A;</div>
+      <p class="ln">Wadali Talao &amp; Eco Park</p>
+      <p class="lcat">Scenic Lake &amp; Botanical Sanctuary</p>
+      <div class="lsr"><span class="ls2 ss">21.1%</span><span class="lb bss">SERENE</span></div>
+    </div>
+    <div class="lcard" data-delay="160" onclick="openSpotModal('bamboo')">
+      <div class="ldr rs">&#x1F38B;</div>
+      <p class="ln">Bamboo Garden Botanical Reserve</p>
+      <p class="lcat">Botanical Biodiversity Reserve</p>
+      <div class="lsr"><span class="ls2 ss">18.7%</span><span class="lb bss">SERENE</span></div>
+    </div>
+    <div class="lcard" data-delay="240" onclick="openSpotModal('kondeshwar')">
+      <div class="ldr rs">&#x26F0;</div>
+      <p class="ln">Kondeshwar Shiva Temple</p>
+      <p class="lcat">Ancient Forest Gorge &amp; Waterfall</p>
+      <div class="lsr"><span class="ls2 ss">29.2%</span><span class="lb bss">SERENE</span></div>
+    </div>
+    <div class="lcard" data-delay="320" onclick="openSpotModal('chikhaldara')">
+      <div class="ldr rh">&#x2615;</div>
+      <p class="ln">Chikhaldara Hill Station &amp; Fort</p>
+      <p class="lcat">Hill Station &amp; Mountain Fort</p>
+      <div class="lsr"><span class="ls2 ssh">92.0%</span><span class="lb bsh">HIGH</span></div>
+    </div>
+    <div class="lcard" data-delay="400" onclick="openSpotModal('chatri')">
+      <div class="ldr rm">&#x1F305;</div>
+      <p class="ln">Chatri Talao Heritage Lake</p>
+      <p class="lcat">Heritage Lake Promenade</p>
+      <div class="lsr"><span class="ls2 ssm">48.3%</span><span class="lb bsm">MODERATE</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- SPOT TELEMETRY MODAL -->
+<div id="telemetry-modal">
+  <div class="tm-box">
+    <button class="tm-close" onclick="closeSpotModal()">&times;</button>
+    <div class="tm-top">
+      <div class="tm-icon" id="tm-icon">&#x1F5FA;</div>
+      <div class="tm-head">
+        <h3 id="tm-title">Destination Name</h3>
+        <p id="tm-cat">Category</p>
+      </div>
+      <span class="lb bss" id="tm-status-badge">SERENE</span>
+    </div>
+    <div class="tm-grid">
+      <div class="tm-stat-card">
+        <span class="tm-stat-lbl">Live Crowd Density</span>
+        <span class="tm-stat-val ss" id="tm-crowd">21.1%</span>
+      </div>
+      <div class="tm-stat-card">
+        <span class="tm-stat-lbl">Best Visiting Window</span>
+        <span class="tm-stat-val" style="font-size:0.92rem;color:var(--azure)" id="tm-time">06:00 AM - 08:30 AM</span>
+      </div>
+      <div class="tm-stat-card">
+        <span class="tm-stat-lbl">Estimated Travel Distance</span>
+        <span class="tm-stat-val" style="font-size:0.95rem" id="tm-eta">11 mins (4.2 km)</span>
+      </div>
+      <div class="tm-stat-card">
+        <span class="tm-stat-lbl">Serenity Rating</span>
+        <span class="tm-stat-val" style="color:var(--emerald-soft);font-size:0.95rem">&#x2605;&#x2605;&#x2605;&#x2605;&#x2605; Optimal</span>
+      </div>
+    </div>
+    <p class="tm-desc" id="tm-desc">Destination overview and cultural details.</p>
+    <div class="tm-merchant">
+      <div class="tm-micon">&#x1F35C;</div>
+      <div class="tm-minfo">
+        <h4 id="tm-mname">Local Merchant Partner</h4>
+        <p id="tm-mdesc">Merchant details and exclusive discount.</p>
+      </div>
+    </div>
+    <div class="tm-actions">
+      <button class="tm-launch-btn" id="tm-launch">&#x1F5FA; Launch Turn-by-Turn Route in 3D Map &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<!-- FINAL CTA -->
+<section class="fcta" id="launch">
+  <div class="cgr"><span class="com">&#x1F9ED;</span></div>
+  <h2>Ready to Find Your<br>Serene Escape?</h2>
+  <p>Step into the full-screen 3D spatial map &mdash; let AI show you Amravati's hidden gems while crowds queue elsewhere.</p>
+  <button class="lb2" onclick="addRipple(event,this);setTimeout(launchApp,350)">&#x1F5FA; <span>Enter GeoDivert 3D Map</span> &rarr;</button>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>&copy; 2026 GeoDivert &middot; Amravati AI Tourism Redistribution Platform</p>
+  <span>ML: DecisionTreeRegressor &middot; 3D: MapLibre GL &middot; AI: Gemini 1.5 Flash</span>
+</footer>
+
+<!-- Background Particle Canvas Script (75 Connected Nodes + Mouse Repulsion Physics) -->
+<script>
+(function(){
+  var c = document.getElementById('pc');
+  if(!c) return;
+  var ctx = c.getContext('2d'), W, H, pts = [];
+  var N = 75, D = 140, CL = ['rgba(56,189,248,', 'rgba(52,211,153,', 'rgba(125,211,252,'];
+  function resize(){ W = c.width = window.innerWidth; H = c.height = window.innerHeight; }
+  function mk(){
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      r: Math.random() * 2 + 0.6,
+      a: Math.random() * 0.45 + 0.1,
+      cl: CL[Math.floor(Math.random() * CL.length)]
+    };
+  }
+  function init(){ resize(); pts = []; for(var i = 0; i < N; i++) pts.push(mk()); }
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+    for(var i = 0; i < pts.length; i++) {
+      for(var j = i + 1; j < pts.length; j++) {
+        var dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y, d = Math.sqrt(dx * dx + dy * dy);
+        if(d < D){
+          var a = (1 - d / D) * 0.12;
+          ctx.strokeStyle = 'rgba(56,189,248,' + a + ')';
+          ctx.lineWidth = 0.6;
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x, pts[i].y);
+          ctx.lineTo(pts[j].x, pts[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    pts.forEach(function(p){
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.cl + p.a + ')';
+      ctx.fill();
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < 0 || p.x > W) p.vx *= -1;
+      if(p.y < 0 || p.y > H) p.vy *= -1;
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  window.addEventListener('mousemove', function(e){
+    pts.forEach(function(p){
+      var dx = p.x - e.clientX, dy = p.y - e.clientY, d = Math.sqrt(dx * dx + dy * dy);
+      if(d < 110){
+        var f = (110 - d) / 110 * 0.55;
+        p.vx += (dx / d) * f;
+        p.vy += (dy / d) * f;
+        var s = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if(s > 2.2){ p.vx = (p.vx / s) * 2.2; p.vy = (p.vy / s) * 2.2; }
+      }
+    });
+  });
+  init(); draw();
+})();
+</script>
+
+<!-- API Configuration Modal -->
+<div class="modal-backdrop" id="landing-api-config-modal" role="dialog" aria-modal="true" style="display:none; position:fixed; inset:0; background:rgba(3,7,18,0.85); backdrop-filter:blur(16px); align-items:center; justify-content:center; z-index:99999;">
+  <div style="max-width:540px; width:90%; background:#0b1329; border:1px solid rgba(56,189,248,0.3); border-radius:20px; padding:24px; color:#fff; box-shadow:0 20px 60px rgba(0,0,0,0.85); position:relative;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.3rem;">🔑</span>
+          <h2 style="font-family:'Outfit',sans-serif; font-weight:800; font-size:1.35rem; color:#fff; margin:0;">API Key Settings</h2>
+        </div>
+        <p style="font-size:0.82rem; color:#94a3b8; margin-top:4px;">Configure your keys for Gemini 1.5/2.5, MapTiler 3D, and OpenTripMap before deploying to GitHub.</p>
+      </div>
+      <button type="button" onclick="closeLandingApiModal()" style="background:none; border:none; color:#94a3b8; font-size:1.4rem; cursor:pointer;">✕</button>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label style="font-size:0.85rem; font-weight:700; color:#38bdf8;">Gemini 1.5 / 2.5 Flash API Key</label>
+          <span id="l-badge-gemini" style="font-size:0.7rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.1); color:#94a3b8;">Default / Env</span>
+        </div>
+        <input type="password" id="l-input-gemini" placeholder="AIzaSy... (Generative AI key)" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:8px 12px; color:#fff; font-size:0.85rem;" />
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label style="font-size:0.85rem; font-weight:700; color:#34d399;">MapTiler 3D Vector & Elevation Key</label>
+          <span id="l-badge-maptiler" style="font-size:0.7rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.1); color:#94a3b8;">Default / Env</span>
+        </div>
+        <input type="password" id="l-input-maptiler" placeholder="1F9CG... (MapTiler key)" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:8px 12px; color:#fff; font-size:0.85rem;" />
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label style="font-size:0.85rem; font-weight:700; color:#fb7185;">OpenTripMap / OpenAI Key (Optional)</label>
+          <span id="l-badge-opentripmap" style="font-size:0.7rem; padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.1); color:#94a3b8;">Default / Env</span>
+        </div>
+        <input type="password" id="l-input-opentripmap" placeholder="5ae2e... (Optional key)" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:8px; padding:8px 12px; color:#fff; font-size:0.85rem;" />
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.08);">
+      <button type="button" onclick="clearLandingApiKeys()" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; padding:8px 14px; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer;">Reset to Default</button>
+      <button type="button" onclick="saveLandingApiKeys()" style="background:linear-gradient(135deg, #0284c7, #2563eb); border:none; color:#fff; padding:8px 20px; border-radius:10px; font-size:0.85rem; font-weight:700; cursor:pointer; box-shadow:0 4px 15px rgba(2,132,199,0.4);">Save API Keys</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openLandingApiModal() {
+  var modal = document.getElementById('landing-api-config-modal');
+  if (modal) modal.style.display = 'flex';
+  var g = localStorage.getItem('geodivert_gemini_key') || '';
+  var m = localStorage.getItem('geodivert_maptiler_key') || '';
+  var o = localStorage.getItem('geodivert_opentripmap_key') || '';
+  document.getElementById('l-input-gemini').value = g;
+  document.getElementById('l-input-maptiler').value = m;
+  document.getElementById('l-input-opentripmap').value = o;
+  updateLBadges(g, m, o);
+}
+function closeLandingApiModal() {
+  var modal = document.getElementById('landing-api-config-modal');
+  if (modal) modal.style.display = 'none';
+}
+function updateLBadges(g, m, o) {
+  var bg = document.getElementById('l-badge-gemini');
+  var bm = document.getElementById('l-badge-maptiler');
+  var bo = document.getElementById('l-badge-opentripmap');
+  if (bg) { bg.textContent = g ? 'Custom Active' : 'Default / Env'; bg.style.color = g ? '#34d399' : '#94a3b8'; }
+  if (bm) { bm.textContent = m ? 'Custom Active' : 'Default / Env'; bm.style.color = m ? '#34d399' : '#94a3b8'; }
+  if (bo) { bo.textContent = o ? 'Custom Active' : 'Default / Env'; bo.style.color = o ? '#34d399' : '#94a3b8'; }
+}
+function saveLandingApiKeys() {
+  var g = document.getElementById('l-input-gemini').value.trim();
+  var m = document.getElementById('l-input-maptiler').value.trim();
+  var o = document.getElementById('l-input-opentripmap').value.trim();
+  if (g) localStorage.setItem('geodivert_gemini_key', g); else localStorage.removeItem('geodivert_gemini_key');
+  if (m) localStorage.setItem('geodivert_maptiler_key', m); else localStorage.removeItem('geodivert_maptiler_key');
+  if (o) localStorage.setItem('geodivert_opentripmap_key', o); else localStorage.removeItem('geodivert_opentripmap_key');
+  updateLBadges(g, m, o);
+  closeLandingApiModal();
+  alert('🔑 API Keys saved successfully!');
+}
+function clearLandingApiKeys() {
+  localStorage.removeItem('geodivert_gemini_key');
+  localStorage.removeItem('geodivert_maptiler_key');
+  localStorage.removeItem('geodivert_opentripmap_key');
+  document.getElementById('l-input-gemini').value = '';
+  document.getElementById('l-input-maptiler').value = '';
+  document.getElementById('l-input-opentripmap').value = '';
+  updateLBadges('', '', '');
+  alert('🔄 API keys reset to environment defaults.');
+}
+</script>
+
+<!-- Scripts -->
+<script src="/js/landing-globe.js"></script>
+<script src="/js/landing-interactive.js"></script>
+</body>
+</html>

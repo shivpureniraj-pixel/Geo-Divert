@@ -39,6 +39,7 @@
     renderPreferencesModal();
     updatePrefBadge();
     updateTimeDisplay();
+    initApiConfigModal();
 
     // 1. Initialize 3D Map
     if (window.GeoDivertMap) {
@@ -106,6 +107,21 @@
       prefClearBtn: document.getElementById('pref-clear-btn'),
       prefSaveBtn: document.getElementById('pref-save-btn'),
       prefCountIndicator: document.getElementById('pref-count-indicator'),
+
+      // API Key Config Modal
+      navApiConfigBtn: document.getElementById('nav-api-config-btn'),
+      apiConfigModal: document.getElementById('api-config-modal'),
+      apiModalCloseBtn: document.getElementById('api-modal-close-btn'),
+      inputApiGemini: document.getElementById('input-api-gemini'),
+      inputApiMaptiler: document.getElementById('input-api-maptiler'),
+      inputApiOpentripmap: document.getElementById('input-api-opentripmap'),
+      btnApiSaveAll: document.getElementById('btn-api-save-all'),
+      btnApiClearAll: document.getElementById('btn-api-clear-all'),
+      badgeStatusGemini: document.getElementById('badge-status-gemini'),
+      badgeStatusMaptiler: document.getElementById('badge-status-maptiler'),
+      badgeStatusOpentripmap: document.getElementById('badge-status-opentripmap'),
+      apiKeysBadge: document.getElementById('api-keys-badge'),
+
       toastContainer: document.getElementById('toast-container')
     };
   }
@@ -222,6 +238,89 @@
         runDispersalPipeline(state.currentLat, state.currentLon, state.currentLocationName);
       });
     }
+
+    // API Key Config Modal Events
+    if (dom.navApiConfigBtn) dom.navApiConfigBtn.addEventListener('click', () => toggleModal(dom.apiConfigModal, true));
+    if (dom.apiModalCloseBtn) dom.apiModalCloseBtn.addEventListener('click', () => toggleModal(dom.apiConfigModal, false));
+    if (dom.apiConfigModal) {
+      dom.apiConfigModal.addEventListener('click', function (e) {
+        if (e.target === dom.apiConfigModal) toggleModal(dom.apiConfigModal, false);
+      });
+    }
+    if (dom.btnApiSaveAll) dom.btnApiSaveAll.addEventListener('click', saveApiKeys);
+    if (dom.btnApiClearAll) dom.btnApiClearAll.addEventListener('click', clearApiKeys);
+  }
+
+  function initApiConfigModal() {
+    loadStoredApiKeys();
+  }
+
+  function loadStoredApiKeys() {
+    const geminiKey = localStorage.getItem('geodivert_gemini_key') || '';
+    const maptilerKey = localStorage.getItem('geodivert_maptiler_key') || '';
+    const opentripmapKey = localStorage.getItem('geodivert_opentripmap_key') || '';
+
+    if (dom.inputApiGemini) dom.inputApiGemini.value = geminiKey;
+    if (dom.inputApiMaptiler) dom.inputApiMaptiler.value = maptilerKey;
+    if (dom.inputApiOpentripmap) dom.inputApiOpentripmap.value = opentripmapKey;
+
+    updateApiBadges(geminiKey, maptilerKey, opentripmapKey);
+  }
+
+  function updateApiBadges(gKey, mKey, oKey) {
+    if (dom.badgeStatusGemini) {
+      dom.badgeStatusGemini.textContent = gKey ? 'Custom Key Active' : 'Default / Env';
+      dom.badgeStatusGemini.style.background = gKey ? 'rgba(52,211,153,0.2)' : 'rgba(255,255,255,0.1)';
+      dom.badgeStatusGemini.style.color = gKey ? '#34d399' : '#94a3b8';
+    }
+    if (dom.badgeStatusMaptiler) {
+      dom.badgeStatusMaptiler.textContent = mKey ? 'Custom Key Active' : 'Default / Env';
+      dom.badgeStatusMaptiler.style.background = mKey ? 'rgba(52,211,153,0.2)' : 'rgba(255,255,255,0.1)';
+      dom.badgeStatusMaptiler.style.color = mKey ? '#34d399' : '#94a3b8';
+    }
+    if (dom.badgeStatusOpentripmap) {
+      dom.badgeStatusOpentripmap.textContent = oKey ? 'Custom Key Active' : 'Default / Env';
+      dom.badgeStatusOpentripmap.style.background = oKey ? 'rgba(52,211,153,0.2)' : 'rgba(255,255,255,0.1)';
+      dom.badgeStatusOpentripmap.style.color = oKey ? '#34d399' : '#94a3b8';
+    }
+    if (dom.apiKeysBadge) {
+      const activeCount = (gKey ? 1 : 0) + (mKey ? 1 : 0) + (oKey ? 1 : 0);
+      dom.apiKeysBadge.textContent = activeCount > 0 ? `${activeCount} Custom` : 'Env';
+      dom.apiKeysBadge.style.background = activeCount > 0 ? 'rgba(52,211,153,0.25)' : 'rgba(56,189,248,0.2)';
+      dom.apiKeysBadge.style.color = activeCount > 0 ? '#34d399' : '#38bdf8';
+    }
+  }
+
+  function saveApiKeys() {
+    const gKey = dom.inputApiGemini ? dom.inputApiGemini.value.trim() : '';
+    const mKey = dom.inputApiMaptiler ? dom.inputApiMaptiler.value.trim() : '';
+    const oKey = dom.inputApiOpentripmap ? dom.inputApiOpentripmap.value.trim() : '';
+
+    if (gKey) localStorage.setItem('geodivert_gemini_key', gKey);
+    else localStorage.removeItem('geodivert_gemini_key');
+
+    if (mKey) localStorage.setItem('geodivert_maptiler_key', mKey);
+    else localStorage.removeItem('geodivert_maptiler_key');
+
+    if (oKey) localStorage.setItem('geodivert_opentripmap_key', oKey);
+    else localStorage.removeItem('geodivert_opentripmap_key');
+
+    updateApiBadges(gKey, mKey, oKey);
+    toggleModal(dom.apiConfigModal, false);
+    showToast('🔑 API Keys saved! Real-time services active.');
+  }
+
+  function clearApiKeys() {
+    localStorage.removeItem('geodivert_gemini_key');
+    localStorage.removeItem('geodivert_maptiler_key');
+    localStorage.removeItem('geodivert_opentripmap_key');
+
+    if (dom.inputApiGemini) dom.inputApiGemini.value = '';
+    if (dom.inputApiMaptiler) dom.inputApiMaptiler.value = '';
+    if (dom.inputApiOpentripmap) dom.inputApiOpentripmap.value = '';
+
+    updateApiBadges('', '', '');
+    showToast('🔄 API keys reset to default environment settings.');
   }
 
   function updateTimeDisplay() {

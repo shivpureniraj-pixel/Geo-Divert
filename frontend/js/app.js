@@ -334,51 +334,65 @@
   }
 
   /**
-   * Geolocation with Immediate Persistent User Radar Identification & Rajkamal Chowk Fallback
+   * Geolocation with Immediate Persistent User Radar Identification & Clear Feedback
    */
   async function detectUserLocation(notifyUser) {
-    if (navigator.geolocation) {
-      if (notifyUser) showToast('📡 Locating your device GPS coordinates...');
-      navigator.geolocation.getCurrentPosition(
-        function (pos) {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          
-          // Calculate distance from Amravati center in km
-          const dLat = (lat - 20.9374) * 111.0;
-          const dLon = (lon - 77.7593) * 111.0;
-          const distKm = Math.sqrt(dLat * dLat + dLon * dLon);
-
-          // If GPS reports user is in/near Amravati (< 60km), use device GPS
-          if (distKm <= 60.0) {
-            state.userGpsLat = lat;
-            state.userGpsLon = lon;
-            state.currentLat = lat;
-            state.currentLon = lon;
-            state.isExplicitSpot = false;
-            state.currentLocationName = '📍 Your Live GPS Location';
-            if (dom.searchInput) dom.searchInput.value = '📍 Your Live GPS Location';
-            
-            if (window.GeoDivertMap) {
-              window.GeoDivertMap.setUserLocation(lat, lon);
-              window.GeoDivertMap.setCenter(lat, lon, 14.2);
-            }
-            showToast(`📍 Live GPS locked: [${lat.toFixed(4)}, ${lon.toFixed(4)}]`);
-            runDispersalPipeline(lat, lon, 'Your Live GPS Location');
-          } else {
-            // Outside Amravati or ISP routing: Fallback to Rajkamal Chowk
-            useDefaultAmravatiLocation(notifyUser);
-          }
-        },
-        function (err) {
-          console.log('GPS notice (using Rajkamal Chowk fallback):', err.message);
-          useDefaultAmravatiLocation(notifyUser);
-        },
-        { timeout: 5000, enableHighAccuracy: false, maximumAge: 60000 }
-      );
-    } else {
+    if (!navigator.geolocation) {
+      if (notifyUser) showToast('⚠️ Geolocation not supported by your browser. Using Rajkamal Chowk, Amravati.');
       useDefaultAmravatiLocation(notifyUser);
+      return;
     }
+
+    if (notifyUser) showToast('📡 Requesting live device GPS coordinates...');
+
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const acc = Math.round(pos.coords.accuracy || 0);
+
+        state.userGpsLat = lat;
+        state.userGpsLon = lon;
+        state.currentLat = lat;
+        state.currentLon = lon;
+        state.isExplicitSpot = false;
+
+        // Calculate distance from Amravati center
+        const dLat = (lat - 20.9374) * 111.0;
+        const dLon = (lon - 77.7593) * 111.0;
+        const distKm = Math.sqrt(dLat * dLat + dLon * dLon);
+
+        if (distKm > 80.0) {
+          // User's device is in another city (e.g. Pune, Nagpur)
+          state.currentLocationName = `📍 Your Live GPS [${lat.toFixed(4)}, ${lon.toFixed(4)}]`;
+          if (dom.searchInput) dom.searchInput.value = state.currentLocationName;
+          showToast(`📍 Real GPS locked: [${lat.toFixed(4)}, ${lon.toFixed(4)}] (±${acc}m). Click '🎯 Rajkamal Chowk' to test locally in Amravati.`);
+        } else {
+          // User is in or near Amravati
+          state.currentLocationName = `📍 Your Live GPS Location (±${acc}m)`;
+          if (dom.searchInput) dom.searchInput.value = '📍 Your Live GPS Location';
+          showToast(`📍 Live GPS locked: [${lat.toFixed(4)}, ${lon.toFixed(4)}] (±${acc}m) in Amravati region.`);
+        }
+
+        if (window.GeoDivertMap) {
+          window.GeoDivertMap.setUserLocation(lat, lon);
+          window.GeoDivertMap.setCenter(lat, lon, 14.0);
+        }
+
+        runDispersalPipeline(lat, lon, state.currentLocationName);
+      },
+      function (err) {
+        let msg = '📍 Defaulted to Rajkamal Chowk, Amravati.';
+        if (err.code === 1) msg = '⚠️ Browser location access denied. Defaulted to Rajkamal Chowk.';
+        else if (err.code === 2) msg = '⚠️ GPS unavailable on device. Defaulted to Rajkamal Chowk.';
+        else if (err.code === 3) msg = '⏱️ GPS request timed out. Defaulted to Rajkamal Chowk.';
+        
+        console.log('[Geolocation status]', err.message);
+        if (notifyUser) showToast(msg);
+        useDefaultAmravatiLocation(false);
+      },
+      { timeout: 8000, enableHighAccuracy: true, maximumAge: 30000 }
+    );
   }
 
   function useDefaultAmravatiLocation(notifyUser) {
